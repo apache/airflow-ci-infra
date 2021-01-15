@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
 # distributed with this work for additional information
@@ -19,7 +20,7 @@ import os
 import platform
 import subprocess
 import tempfile
-from typing import Tuple
+from typing import Optional, Tuple
 
 import boto3
 import click
@@ -35,20 +36,27 @@ from botocore.exceptions import NoCredentialsError
     metavar="VER",
 )
 @click.option("--repo", default="apache/airflow")
+@click.option("--store-as", default="apache/airflow")
+@click.option("--runnergroup")
 @click.option("--token", help="GitHub runner registration token", required=False)
 @click.option("--index", type=int, required=False)
-def main(token, runner_version, repo, index: int):
+def main(
+    token, runner_version, store_as: Optional[str], repo, runnergroup: Optional[str], index: Optional[int]
+):
     check_aws_config()
     dir = make_runner_dir(runner_version)
 
     if not token:
         token = click.prompt("GitHub runner registration token")
 
-    if not index:
-        index = get_next_index(repo)
+    if store_as is None:
+        store_as = repo
+
+    if index is None:
+        index = get_next_index(store_as)
     click.echo(f"Registering as runner {index}")
 
-    register_runner(dir.name, token, repo, index)
+    register_runner(dir.name, token, repo, runnergroup, store_as, index)
 
 
 def check_aws_config():
@@ -105,25 +113,28 @@ def get_next_index(repo: str) -> int:
             return n
 
 
-def register_runner(dir: str, token: str, repo: str, index: int):
+def register_runner(dir: str, token: str, repo: str, runnergroup: Optional[str], store_as: str, index: int):
     os.chdir(dir)
 
-    res = subprocess.call(
-        [
-            "./config.sh",
-            "--unattended",
-            "--url",
-            f"https://github.com/{repo}",
-            "--token",
-            token,
-            "--name",
-            f"Airflow Runner {index}",
-        ]
-    )
+    cmd = [
+        "./config.sh",
+        "--unattended",
+        "--url",
+        f"https://github.com/{repo}",
+        "--token",
+        token,
+        "--name",
+        f"Airflow Runner {index}",
+    ]
+
+    if runnergroup:
+        cmd += ['--runnergroup', runnergroup]
+
+    res = subprocess.call(cmd)
 
     if res != 0:
         exit(res)
-    _put_runner_creds(repo, index)
+    _put_runner_creds(store_as, index)
 
 
 def _put_runner_creds(repo: str, index: int):
