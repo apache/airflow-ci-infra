@@ -15,13 +15,13 @@
 # specific language governing permissions and limitations
 # under the License.
 
+import codecs
 import hmac
 import json
 import os
 from typing import cast
 
 import boto3
-import pendulum
 from chalice import BadRequestError, Chalice, ForbiddenError
 from chalice.app import Request
 
@@ -32,11 +32,16 @@ ASG_GROUP_NAME = os.getenv('ASG_NAME', 'AshbRunnerASG')
 
 
 _commiters = set()
+GH_WEBHOOK_TOKEN = None
 
 
 @app.route('/', methods=['POST'])
 def index():
     validate_gh_sig(app.current_request)
+
+    if app.current_request.headers.get('X-GitHub-Event', None) != "check_run":
+        # Ignore things about installs/permissions etc
+        return {'ignored': 'not about check_runs'}
 
     body = app.current_request.json_body
 
@@ -48,16 +53,26 @@ def index():
         app.log.debug("Ignoring event for %r", repo)
         return {'ignored': 'Other repo'}
 
+    if body['action'] != 'created':
+        return {'ignored': "action is not 'created'"}
+
+    if body['check_run']['status'] != 'queued':
+        # Skipped runs are "created", but are instantly completed. Ignore anything that is not queued
+        return {'ignored': "check_run.status is not 'queued'"}
+
     sender = body['sender']['login']
 
-    use_self_hosted = sender in commiters()
+    # use_self_hosted = sender in commiters()
+    # XXX: HACK
+    use_self_hosted = sender in ("ashb",)
+
+    # Send the request to SQS. We don't actually need this json blob, just _a message_.
+    send_to_sqs(body)
 
     payload = {'sender': sender, 'use_self_hosted': use_self_hosted}
     if use_self_hosted:
-        if has_idle_instances():
-            payload['idle_instances'] = True
-        else:
-            payload['scaled_out'] = scale_out_runner_asg()
+        payload.update(**scale_asg_if_needed())
+    app.log.info("%r", payload)
     return payload
 
 
@@ -88,7 +103,7 @@ def commiters(ssm_repo_name: str = os.getenv('SSM_REPO_NAME', 'apache/airflow'))
 
 
 def validate_gh_sig(request: Request):
-    sig = request.headers['X-Hub-Signature-256']
+    sig = request.headers.get('X-Hub-Signature-256', None)
     if not sig.startswith('sha256='):
         raise BadRequestError('X-Hub-Signature-256 not of expected format')
 
@@ -102,76 +117,63 @@ def validate_gh_sig(request: Request):
 
 
 def sign_request_body(request: Request) -> str:
-    key = os.environ['GH_WEBHOOK_TOKEN'].encode('utf-8')
+    global GH_WEBHOOK_TOKEN
+    if GH_WEBHOOK_TOKEN is None:
+        if 'GH_WEBHOOK_TOKEN' in os.environ:
+            # Local dev support:
+            GH_WEBHOOK_TOKEN = os.environ['GH_WEBHOOK_TOKEN'].encode('utf-8')
+        else:
+            encrypted = os.environb[b'GH_WEBHOOK_TOKEN_ENCRYPTED']
+
+            kms = boto3.client('kms')
+            response = kms.decrypt(CiphertextBlob=codecs.decode(encrypted, 'base64'))
+            GH_WEBHOOK_TOKEN = response['Plaintext']
     body = cast(bytes, request.raw_body)
-    return hmac.new(key, body, digestmod='SHA256').hexdigest()  # type: ignore
+    return hmac.new(GH_WEBHOOK_TOKEN, body, digestmod='SHA256').hexdigest()  # type: ignore
 
 
-def has_idle_instances():
-    client = boto3.client('cloudwatch')
+def send_to_sqs(payload: dict):
+    sqs = boto3.client('sqs')
 
-    end_time = pendulum.now().start_of('minute')
-    start_time = end_time.subtract(minutes=1)
-
-    resp = client.get_metric_data(
-        StartTime=start_time,
-        EndTime=end_time,
-        MaxDatapoints=1,
-        # This is likely far from perfect, as it only looks at the snapshot reported a minute ago.
-        MetricDataQueries=[
-            {"Id": "e1", "Expression": "m2 - m1", "Label": "Idle instances", "ReturnData": True},
-            {
-                "Id": "m2",
-                "MetricStat": {
-                    "Metric": {
-                        "Namespace": "AWS/AutoScaling",
-                        "MetricName": "GroupInServiceInstances",
-                        "Dimensions": [
-                            {
-                                "Name": "AutoScalingGroupName",
-                                "Value": ASG_GROUP_NAME,
-                            }
-                        ],
-                    },
-                    "Period": 60,
-                    "Stat": "Average",
-                },
-                "ReturnData": False,
-            },
-            {
-                "Id": "m1",
-                "MetricStat": {
-                    "Metric": {"Namespace": "github.actions", "MetricName": "jobs-running", "Dimensions": []},
-                    "Period": 60,
-                    "Stat": "Sum",
-                },
-                "ReturnData": False,
-            },
-        ],
+    sqs.send_message(
+        QueueUrl=os.getenv('ACTIONS_SQS_URL'),
+        MessageBody=json.dumps(payload),
     )
 
-    idle_instances: float = resp['MetricDataResults'][0]['Values'][0]
 
-    return idle_instances > 0
-
-
-def scale_out_runner_asg():
+def scale_asg_if_needed() -> dict:
+    sqs = boto3.client('sqs')
     asg = boto3.client('autoscaling')
+
+    attrs = sqs.get_queue_attributes(
+        QueueUrl=os.getenv('ACTIONS_SQS_URL'), AttributeNames=['ApproximateNumberOfMessages']
+    )
+
+    backlog = int(attrs['Attributes']['ApproximateNumberOfMessages'])
 
     resp = asg.describe_auto_scaling_groups(
         AutoScalingGroupNames=[ASG_GROUP_NAME],
     )
 
-    group = resp['AutoScalingGroups'][0]
+    asg_info = resp['AutoScalingGroups'][0]
 
-    desired = group['DesiredCapacity']
-    max_size = group['MaxSize']
+    desired = asg_info['DesiredCapacity']
+    max_size = asg_info['MaxSize']
 
-    try:
+    busy = 0
+    for instance in asg_info['Instances']:
+        if instance['LifecycleState'] == 'InService' and instance['ProtectedFromScaleIn']:
+            busy += 1
+
+    new_size = backlog + busy
+    if new_size != desired:
         if desired < max_size:
-            asg.set_desired_capacity(AutoScalingGroupName=ASG_GROUP_NAME, DesiredCapacity=desired + 1)
-            return {'new capcity': desired + 1}
+            try:
+                asg.set_desired_capacity(AutoScalingGroupName=ASG_GROUP_NAME, DesiredCapacity=new_size)
+                return {'new capcity': new_size}
+            except asg.exceptions.ScalingActivityInProgressFault as e:
+                return {'error': str(e)}
         else:
             return {'capcity_at_max': True}
-    except asg.exceptions.ScalingActivityInProgressFault as e:
-        return {'error': str(e)}
+    else:
+        return {'idle_instances': True}

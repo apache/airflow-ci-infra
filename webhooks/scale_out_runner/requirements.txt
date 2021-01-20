@@ -16,4 +16,3 @@
 # under the License.
 
 boto3
-pendulum ~=2.0
