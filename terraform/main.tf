@@ -51,9 +51,10 @@ resource "aws_launch_template" "runners" {
   instance_type = "t2.micro"
   vpc_security_group_ids = ["sg-12345678"]
   user_data = filebase64("${path.module}/example.sh")
-  
+
   network_interfaces {
     associate_public_ip_address = true
+    security_groups = []
   }
 
   iam_instance_profile {
@@ -62,6 +63,14 @@ resource "aws_launch_template" "runners" {
 
   monitoring {
     enabled = true
+  }
+
+  tag_specifications {
+    resource_type = "instance"
+
+    tags = {
+      Name = "test"
+    }
   }
 }
 
