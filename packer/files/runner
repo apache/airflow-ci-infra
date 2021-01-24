@@ -1,0 +1,1 @@
+runner ALL=(ALL) NOPASSWD:/usr/sbin/swapoff -a, /usr/bin/rm -f /swapfile, /usr/bin/apt clean

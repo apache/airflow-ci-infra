@@ -1,0 +1,16 @@
+[Unit]
+Description=GitHub Actions Runner
+After=network.target
+Requires=actions.runner-credentials.service
+[Service]
+ExecStartPre=!/usr/local/sbin/runner-cleanup-workdir.sh
+ExecStart=/home/runner/actions-runner/run.sh --once --startuptype service
+EnvironmentFile=/etc/environment
+User=runner
+WorkingDirectory=/home/runner/actions-runner
+KillMode=process
+KillSignal=SIGTERM
+TimeoutStopSec=5min
+Restart=always
+[Install]
+WantedBy=multi-user.target

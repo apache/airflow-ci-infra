@@ -44,4 +44,32 @@ build {
         "echo Connected via SSM at '${build.User}@${build.Host}:${build.Port}'"
       ]
   }
+  provisioner "file" {
+    destination = "/etc/systemd/system/actions.runner.service"
+    source      = "./files/actions.runner.service"
+  }
+  provisioner "file" {
+    destination = "/usr/local/sbin/runner-cleanup-workdir.sh"
+    source      = "./files/runner-cleanup-workdir.sh"
+  }
+  provisioner "file" {
+    destination = "/etc/sudoers.d/runner"
+    source      = "./files/runner"
+  }
+  provisioner "file" {
+    destination = "/etc/iptables/rules.v4"
+    source      = "./files/rules.v4"
+  }
+  provisioner "file" {
+    destination = "/usr/local/sbin/actions-runner-ec2-reporting"
+    source      = "./files/actions-runner-ec2-reporting"
+  }
+  provisioner "file" {
+    destination = "/etc/cron.d/cloudwatch-metrics-github-runners"
+    source      = "./files/cloudwatch-metrics-github-runners"
+  }
+  provisioner "file" {
+    destination = "/etc/systemd/system/actions.runner-credentials.service"
+    source      = "./files/actions.runner-credentials.service"
+  }
 }
