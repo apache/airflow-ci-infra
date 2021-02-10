@@ -11,14 +11,13 @@
                 "ssm:GetParameter",
                 "logs:CreateLogGroup",
                 "logs:PutLogEvents",
-                "sqs:GetQueueAttributes",
-                "sqs:SendMessage"
+                "dynamodb:UpdateItem"
             ],
             "Resource": [
                 "arn:aws:ssm:*:827901512104:parameter/runners/*/configOverlay",
                 "arn:aws:autoscaling:*:827901512104:autoScalingGroup:*:autoScalingGroupName/AshbRunnerASG",
                 "arn:aws:kms:*:827901512104:key/48a58710-7ac6-4f88-995f-758a6a450faa",
-                "arn:aws:sqs:*:827901512104:actions-runner-requests",
+                "arn:aws:dynamodb:*:827901512104:table/GithubRunnerQueue",
                 "arn:*:logs:*:*:*"
             ]
         },

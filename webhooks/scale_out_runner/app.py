@@ -18,6 +18,7 @@
 import codecs
 import hmac
 import json
+import logging
 import os
 from typing import cast
 
@@ -26,13 +27,20 @@ from chalice import BadRequestError, Chalice, ForbiddenError
 from chalice.app import Request
 
 app = Chalice(app_name='scale_out_runner')
+app.log.setLevel(logging.INFO)
 
-INTERESTED_REPOS = os.getenv('REPOS', 'apache/airflow').split(',')
 ASG_GROUP_NAME = os.getenv('ASG_NAME', 'AshbRunnerASG')
-
-
+TABLE_NAME = os.getenv('COUNTER_TABLE', 'GithubRunnerQueue')
 _commiters = set()
 GH_WEBHOOK_TOKEN = None
+
+if 'REPOS' in os.environ:
+    REPO_CONFIGURATION = json.loads(os.getenv('REPOS'))
+else:
+    REPO_CONFIGURATION = {
+        # <repo>: [list-of-branches-to-use-self-hosted-on]
+        'apache/airflow': {'main', 'master'},
+    }
 
 
 @app.route('/', methods=['POST'])
@@ -47,32 +55,47 @@ def index():
 
     repo = body['repository']['full_name']
 
-    # Other repos configured with this app, but we don't do anything with them
-    # yet.
-    if repo not in INTERESTED_REPOS:
-        app.log.debug("Ignoring event for %r", repo)
-        return {'ignored': 'Other repo'}
-
-    if body['action'] != 'created':
-        return {'ignored': "action is not 'created'"}
-
-    if body['check_run']['status'] != 'queued':
-        # Skipped runs are "created", but are instantly completed. Ignore anything that is not queued
-        return {'ignored': "check_run.status is not 'queued'"}
-
     sender = body['sender']['login']
 
-    # use_self_hosted = sender in commiters()
-    # XXX: HACK
-    use_self_hosted = sender in ("ashb",)
+    # Other repos configured with this app, but we don't do anything with them
+    # yet.
+    if repo not in REPO_CONFIGURATION:
+        app.log.info("Ignoring event for %r", repo)
+        return {'ignored': 'Other repo'}
 
-    # Send the request to SQS. We don't actually need this json blob, just _a message_.
-    send_to_sqs(body)
+    interested_branches = REPO_CONFIGURATION[repo]
 
+    branch = body['check_run']['check_suite']['head_branch']
+
+    use_self_hosted = sender in commiters() or branch in interested_branches
     payload = {'sender': sender, 'use_self_hosted': use_self_hosted}
-    if use_self_hosted:
-        payload.update(**scale_asg_if_needed())
-    app.log.info("%r", payload)
+
+    if body['action'] == 'completed' and body['check_run']['conclusion'] == 'cancelled':
+        if use_self_hosted:
+            # The only time we get a "cancelled" job is when it wasn't yet running.
+            queue_length = increment_dynamodb_counter(-1)
+            # Don't scale in the ASG -- let the CloudWatch alarm do that.
+            payload['new_queue'] = queue_length
+        else:
+            payload = {'ignored': 'unknown sender'}
+
+    elif body['action'] != 'created':
+        payload = {'ignored': "action is not 'created'"}
+
+    elif body['check_run']['status'] != 'queued':
+        # Skipped runs are "created", but are instantly completed. Ignore anything that is not queued
+        payload = {'ignored': "check_run.status is not 'queued'"}
+    else:
+        if use_self_hosted:
+            # Increment counter in DynamoDB
+            queue_length = increment_dynamodb_counter()
+            payload.update(**scale_asg_if_needed(queue_length))
+    app.log.info(
+        "delivery=%s branch=%s: %r",
+        app.current_request.headers.get('X-GitHub-Delivery', None),
+        branch,
+        payload,
+    )
     return payload
 
 
@@ -132,24 +155,27 @@ def sign_request_body(request: Request) -> str:
     return hmac.new(GH_WEBHOOK_TOKEN, body, digestmod='SHA256').hexdigest()  # type: ignore
 
 
-def send_to_sqs(payload: dict):
-    sqs = boto3.client('sqs')
-
-    sqs.send_message(
-        QueueUrl=os.getenv('ACTIONS_SQS_URL'),
-        MessageBody=json.dumps(payload),
+def increment_dynamodb_counter(delta: int = 1) -> int:
+    dynamodb = boto3.client('dynamodb')
+    args = dict(
+        TableName=TABLE_NAME,
+        Key={'id': {'S': 'queued_jobs'}},
+        ExpressionAttributeValues={':delta': {'N': str(delta)}},
+        UpdateExpression='ADD queued :delta',
+        ReturnValues='UPDATED_NEW',
     )
 
+    if delta < 0:
+        # Make sure it never goes below zero!
+        args['ExpressionAttributeValues'][':limit'] = {'N': str(-delta)}
+        args['ConditionExpression'] = 'queued >= :limit'
 
-def scale_asg_if_needed() -> dict:
-    sqs = boto3.client('sqs')
+    resp = dynamodb.update_item(**args)
+    return int(resp['Attributes']['queued']['N'])
+
+
+def scale_asg_if_needed(num_queued_jobs: int) -> dict:
     asg = boto3.client('autoscaling')
-
-    attrs = sqs.get_queue_attributes(
-        QueueUrl=os.getenv('ACTIONS_SQS_URL'), AttributeNames=['ApproximateNumberOfMessages']
-    )
-
-    backlog = int(attrs['Attributes']['ApproximateNumberOfMessages'])
 
     resp = asg.describe_auto_scaling_groups(
         AutoScalingGroupNames=[ASG_GROUP_NAME],
@@ -157,23 +183,25 @@ def scale_asg_if_needed() -> dict:
 
     asg_info = resp['AutoScalingGroups'][0]
 
-    desired = asg_info['DesiredCapacity']
+    current = asg_info['DesiredCapacity']
     max_size = asg_info['MaxSize']
 
     busy = 0
     for instance in asg_info['Instances']:
         if instance['LifecycleState'] == 'InService' and instance['ProtectedFromScaleIn']:
             busy += 1
+    app.log.info("Busy instances: %d, num_queued_jobs: %d, current_size: %d", busy, num_queued_jobs, current)
 
-    new_size = backlog + busy
-    if new_size != desired:
-        if desired < max_size:
+    new_size = num_queued_jobs + busy
+    if new_size > current:
+        if new_size <= max_size or current < max_size:
             try:
+                new_size = min(new_size, max_size)
                 asg.set_desired_capacity(AutoScalingGroupName=ASG_GROUP_NAME, DesiredCapacity=new_size)
-                return {'new capcity': new_size}
+                return {'new_capcity': new_size}
             except asg.exceptions.ScalingActivityInProgressFault as e:
                 return {'error': str(e)}
         else:
-            return {'capcity_at_max': True}
+            return {'capacity_at_max': True}
     else:
         return {'idle_instances': True}
