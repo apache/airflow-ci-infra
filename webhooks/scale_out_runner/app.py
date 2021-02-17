@@ -34,13 +34,15 @@ TABLE_NAME = os.getenv('COUNTER_TABLE', 'GithubRunnerQueue')
 _commiters = set()
 GH_WEBHOOK_TOKEN = None
 
-if 'REPOS' in os.environ:
-    REPO_CONFIGURATION = json.loads(os.getenv('REPOS'))
+REPOS = os.getenv('REPOS')
+if REPOS:
+    REPO_CONFIGURATION = json.loads(REPOS)
 else:
     REPO_CONFIGURATION = {
         # <repo>: [list-of-branches-to-use-self-hosted-on]
         'apache/airflow': {'main', 'master'},
     }
+del REPOS
 
 
 @app.route('/', methods=['POST'])
@@ -127,7 +129,7 @@ def commiters(ssm_repo_name: str = os.getenv('SSM_REPO_NAME', 'apache/airflow'))
 
 def validate_gh_sig(request: Request):
     sig = request.headers.get('X-Hub-Signature-256', None)
-    if not sig.startswith('sha256='):
+    if not sig or not sig.startswith('sha256='):
         raise BadRequestError('X-Hub-Signature-256 not of expected format')
 
     sig = sig[len('sha256=') :]

@@ -15,7 +15,21 @@
 # specific language governing permissions and limitations
 # under the License.
 
-boto3
-click~=7.1
-requests
-pytest~=6.0
+import os
+import sys
+
+import pytest
+from chalice.test import Client
+
+path = os.path.dirname(__file__)
+idx = path.rfind('/tests/')
+path = path[:idx] + path[idx + 6 :]
+sys.path.append(path)
+
+
+@pytest.fixture
+def client(request):
+    app = getattr(request.module, "app")
+
+    with Client(app) as client:
+        yield client
