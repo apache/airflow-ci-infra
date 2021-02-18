@@ -14,8 +14,3 @@
 # KIND, either express or implied.  See the License for the
 # specific language governing permissions and limitations
 # under the License.
-
-boto3
-click~=7.1
-requests
-pytest~=6.0

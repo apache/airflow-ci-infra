@@ -1,0 +1,28 @@
+{
+  "resources": [
+    {
+      "name": "managed-layer",
+      "resource_type": "lambda_layer",
+      "layer_version_arn": "arn:aws:lambda:eu-central-1:827901512104:layer:scale_out_runner-prod-managed-layer:35"
+    },
+    {
+      "name": "api_handler_role",
+      "resource_type": "iam_role",
+      "role_arn": "arn:aws:iam::827901512104:role/scale_out_runner-prod-api_handler",
+      "role_name": "scale_out_runner-prod-api_handler"
+    },
+    {
+      "name": "api_handler",
+      "resource_type": "lambda_function",
+      "lambda_arn": "arn:aws:lambda:eu-central-1:827901512104:function:scale_out_runner-prod"
+    },
+    {
+      "name": "rest_api",
+      "resource_type": "rest_api",
+      "rest_api_id": "2onm92olq7",
+      "rest_api_url": "https://2onm92olq7.execute-api.eu-central-1.amazonaws.com/api/"
+    }
+  ],
+  "schema_version": "2.0",
+  "backend": "api"
+}

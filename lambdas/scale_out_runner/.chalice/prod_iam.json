@@ -1,0 +1,33 @@
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "VisualEditor0",
+            "Effect": "Allow",
+            "Action": [
+                "logs:CreateLogStream",
+                "kms:Decrypt",
+                "autoscaling:SetDesiredCapacity",
+                "ssm:GetParameter",
+                "logs:CreateLogGroup",
+                "logs:PutLogEvents",
+                "dynamodb:UpdateItem"
+            ],
+            "Resource": [
+                "arn:aws:ssm:*:827901512104:parameter/runners/*/configOverlay",
+                "arn:aws:autoscaling:*:827901512104:autoScalingGroup:*:autoScalingGroupName/AshbRunnerASG",
+                "arn:aws:kms:*:827901512104:key/48a58710-7ac6-4f88-995f-758a6a450faa",
+                "arn:aws:dynamodb:*:827901512104:table/GithubRunnerQueue",
+                "arn:*:logs:*:*:*"
+            ]
+        },
+        {
+            "Sid": "VisualEditor1",
+            "Effect": "Allow",
+            "Action": [
+                "autoscaling:DescribeAutoScalingGroups"
+            ],
+            "Resource": "*"
+        }
+    ]
+}
