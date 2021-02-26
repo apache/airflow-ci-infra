@@ -31,7 +31,7 @@ app.log.setLevel(logging.INFO)
 
 ASG_GROUP_NAME = os.getenv('ASG_NAME', 'AshbRunnerASG')
 TABLE_NAME = os.getenv('COUNTER_TABLE', 'GithubRunnerQueue')
-_commiters = set()
+_committers = set()
 GH_WEBHOOK_TOKEN = None
 
 REPOS = os.getenv('REPOS')
@@ -69,7 +69,7 @@ def index():
 
     branch = body['check_run']['check_suite']['head_branch']
 
-    use_self_hosted = sender in commiters() or branch in interested_branches
+    use_self_hosted = sender in committers() or branch in interested_branches
     payload = {'sender': sender, 'use_self_hosted': use_self_hosted}
 
     if body['action'] == 'completed' and body['check_run']['conclusion'] == 'cancelled':
@@ -101,10 +101,10 @@ def index():
     return payload
 
 
-def commiters(ssm_repo_name: str = os.getenv('SSM_REPO_NAME', 'apache/airflow')):
-    global _commiters
+def committers(ssm_repo_name: str = os.getenv('SSM_REPO_NAME', 'apache/airflow')):
+    global _committers
 
-    if not _commiters:
+    if not _committers:
         client = boto3.client('ssm')
         param_path = os.path.join('/runners/', ssm_repo_name, 'configOverlay')
         app.log.info("Loading config overlay from %s", param_path)
@@ -122,9 +122,9 @@ def commiters(ssm_repo_name: str = os.getenv('SSM_REPO_NAME', 'apache/airflow'))
             app.log.debug("Failed to parse config overlay", exc_info=True)
             return set()
 
-        _commiters = set(overlay['pullRequestSecurity']['allowedAuthors'])
+        _committers = set(overlay['pullRequestSecurity']['allowedAuthors'])
 
-    return _commiters
+    return _committers
 
 
 def validate_gh_sig(request: Request):
@@ -200,7 +200,7 @@ def scale_asg_if_needed(num_queued_jobs: int) -> dict:
             try:
                 new_size = min(new_size, max_size)
                 asg.set_desired_capacity(AutoScalingGroupName=ASG_GROUP_NAME, DesiredCapacity=new_size)
-                return {'new_capcity': new_size}
+                return {'new_capacity': new_size}
             except asg.exceptions.ScalingActivityInProgressFault as e:
                 return {'error': str(e)}
         else:
