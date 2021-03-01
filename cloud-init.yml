@@ -120,6 +120,9 @@ write_files:
   - path: /usr/local/sbin/runner-cleanup-workdir.sh
     content: |
       #!/bin/bash
+      echo "Left-over containers:"
+      docker ps -a
+      docker ps -qa | xargs --verbose --no-run-if-empty docker rm -fv
 
       if [[ -d ~runner/actions-runner/_work/airflow/airflow ]]; then
         cd ~runner/actions-runner/_work/airflow/airflow
@@ -133,7 +136,6 @@ write_files:
             git clean -fxd \
           "
         fi
-        docker ps -qa | xargs --no-run-if-empty docker rm -fv
       fi
     owner: root:root
     permissions: '0775'
