@@ -39,6 +39,8 @@ runcmd:
     - |
       set -exu -o pipefail
       echo "AWS_DEFAULT_REGION=$(cloud-init query region)" >> /etc/environment
+      # Set an env var (that is visible in runners) that will let us know we are on a self-hosted runner
+      echo 'AIRFLOW_SELF_HOSTED_RUNNER="[\"self-hosted\"]"' >> /etc/environment
       set -a
       . /etc/environment
       set +a
