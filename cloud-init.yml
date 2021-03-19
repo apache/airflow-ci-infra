@@ -288,6 +288,7 @@ write_files:
 
           if err == null {
             . = merge(., structured)
+            .message = strip_ansi_escape_codes!(.message)
             .type = "job-output"
           }
         '''
