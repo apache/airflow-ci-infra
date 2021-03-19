@@ -1,15 +1,15 @@
 module "vpc" {
   source = "terraform-aws-modules/vpc/aws"
-  name = ""
+  name = "github-runners-vpc"
   cidr = var.vpc_cidr
   azs             = var.vpc_azs
   public_subnets  = module.subnet_addrs.networks[*].cidr_block
+  enable_dynamodb_endpoint = true
   tags = var.tags
 }
 
 module "subnet_addrs" {
   source = "hashicorp/subnets/cidr"
-
   base_cidr_block = var.vpc_cidr
   networks = [
     {
@@ -38,18 +38,23 @@ resource "aws_autoscaling_group" "runners" {
   launch_configuration      = aws_launch_configuration.foobar.name
   vpc_zone_identifier       = module.vpc.public_subnets
   tags = var.tags 
-
   launch_template {
     id      = aws_launch_template.runners.id
     version = "$Latest"
   }
 }
 
+resource "aws_autoscaling_policy" "example" {
+  name                   = "foobar3-terraform-test"
+  autoscaling_group_name = aws_autoscaling_group.runners.name
+  policy_type = 
+}
+
 resource "aws_launch_template" "runners" {
   name_prefix   = "ci-runner"
   image_id      = data.aws_ami.runner.id
   instance_type = "t2.micro"
-  vpc_security_group_ids = ["sg-12345678"]
+  vpc_security_group_ids = [aws_security_group.github_runners.id]
   user_data = filebase64("${path.module}/example.sh")
 
   network_interfaces {
@@ -84,7 +89,161 @@ data "aws_ami" "runner" {
   }
 }
 
+resource "aws_dynamodb_table" "github-runner-locks" {
+  name           = "GithubRunnerLocks"
+  billing_mode   = "PROVISIONED"
+  read_capacity  = 5
+  write_capacity = 5
+  hash_key       = "lock_key"
+  range_key      = "sort_key"
+  tags = var.tags
+}
 
+resource "aws_dynamodb_table" "github-runner-queue" {
+  name           = "GithubRunnerQueue"
+  billing_mode   = "PROVISIONED"
+  read_capacity  = 1
+  write_capacity = 1
+  hash_key       = "id"
+  tags = var.tags
+}
 
+resource "aws_security_group" "github_runners" {
+  name = "Github Runner"
+  vpc_id = module.vpc.vpc_id	
+  description = "Security group to enable github runners "
+  tags = var.tags
+}
 
+resource "aws_iam_role" "runner_role" {
+  name = "Runner Policy"
+
+  assume_role_policy = <<EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Action": "sts:AssumeRole",
+      "Principal": {
+        "Service": "ec2.amazonaws.com"
+      },
+      "Effect": "Allow",
+      "Sid": ""
+    }
+  ]
+}
+EOF
+
+  tags = {
+    tag-key = "tag-value"
+  }
+}
+
+resource "aws_iam_role_policy" "test_policy" {
+  name = "RunnerPolicy"
+  role = aws_iam_role.test_role.id
+
+  policy = <<-EOF
+  {
+    "Version": "2012-10-17",
+    "Statement": [
+      {
+            "Sid": "VisualEditor0",
+            "Effect": "Allow",
+            "Action": "cloudwatch:PutMetricData",
+            "Resource": "*",
+            "Condition": {
+                "StringEquals": {
+                    "cloudwatch:namespace": "github.actions"
+                }
+            }
+        },
+        {
+            "Sid": "VisualEditor1",
+            "Effect": "Allow",
+            "Action": [
+                "ssm:DescribeParameters",
+                "ec2:DescribeTags"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Sid": "VisualEditor2",
+            "Effect": "Allow",
+            "Action": [
+                "sqs:DeleteMessage",
+                "s3:GetObject",
+                "dynamodb:PutItem",
+                "autoscaling:CompleteLifecycleAction",
+                "dynamodb:DeleteItem",
+                "autoscaling:SetInstanceProtection",
+                "sqs:ReceiveMessage",
+                "dynamodb:GetItem",
+                "dynamodb:UpdateItem",
+                "autoscaling:RecordLifecycleActionHeartbeat"
+            ],
+            "Resource": [
+                "arn:aws:dynamodb:*:827901512104:table/GitHubRunnerLocks",
+                "arn:aws:sqs:*:827901512104:actions-runner-requests",
+                "arn:aws:autoscaling:*:827901512104:autoScalingGroup:*:autoScalingGroupName/AshbRunnerASG",
+                "arn:aws:s3:::airflow-ci-assets//*",
+                "arn:aws:s3:::airflow-ci-assets"
+            ]
+        },
+        {
+            "Sid": "VisualEditor3",
+            "Effect": "Allow",
+            "Action": [
+                "ssm:GetParametersByPath",
+                "dynamodb:UpdateItem",
+                "ssm:GetParameters",
+                "ssm:GetParameter"
+            ],
+            "Resource": [
+                "arn:aws:ssm:*:827901512104:parameter/runners//*",
+                "arn:aws:dynamodb:*:827901512104:table/GithubRunnerQueue"
+            ]
+        }
+    ]
+  }
+  EOF
+}
+
+resource "aws_iam_role_policy" "test_policy" {
+  name = "GithubCloudWatchLogs"
+  role = aws_iam_role.test_role.id
+
+  policy = <<-EOF
+  {
+    "Version": "2012-10-17",
+    "Statement": [
+      {
+            "Sid": "VisualEditor0",
+            "Effect": "Allow",
+            "Action": [
+                "logs:CreateLogStream",
+                "logs:DescribeLogGroups",
+                "logs:DescribeLogStreams",
+                "logs:PutLogEvents",
+                "ssm:GetParameter"
+            ],
+            "Resource": [
+                "arn:aws:logs:*:827901512104:log-group:GitHubRunners:log-stream:*",
+                "arn:aws:logs:*:827901512104:log-group:*",
+                "arn:aws:ssm:*:*:parameter/runners/apache/airflow/AmazonCloudWatch-*"
+            ]
+        }
+    ]
+  }
+  EOF
+}
+
+resource "aws_iam_role_policy_attachment" "test-attach" {
+  role       = aws_iam_role.role.name
+  policy_arn = aws_iam_policy.policy.arn
+}
+resource "aws_iam_role_policy_attachment" "test-attach" {
+  role       = aws_iam_role.role.name
+  policy_arn = aws_iam_policy.policy.arn
+}
 
