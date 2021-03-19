@@ -80,7 +80,7 @@ runcmd:
       aws ssm get-parameter --with-decryption --name /runners/apache/airflow/dockerPassword | \
         jq .Parameter.Value -r | \
         sudo -u runner docker login --username airflowcirunners --password-stdin
-    - 2.277.1-airflow1
+    - 2.277.1-airflow3
   - [systemctl, enable, --now, iptables.service]
   # Restart docker after applying the user firewall -- else some rules/chains might be list!
   - [systemctl, restart, docker.service]
