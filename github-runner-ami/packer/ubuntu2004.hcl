@@ -73,7 +73,23 @@ build {
     source      = "./files/cloudwatch-metrics-github-runners"
   }
   provisioner "file" {
-    destination = "/etc/systemd/system/actions.runner-credentials.service"
-    source      = "./files/actions.runner-credentials.service"
+    destination = "/etc/systemd/system/actions.runner-supervisor.service"
+    source      = "./files/actions.runner-supervisor.service"
+  }
+  provisioner "file" {
+    destination = "/usr/local/sbin/set-file-permissions.sh"
+    source      = "./files/set-file-permissions.sh"
+  }
+  provisioner "file" {
+    destination = "/usr/local/sbin/timber.key"
+    source      = "./files/timber.key"
+  }
+  provisioner "file" {
+    destination = "/usr/local/sbin/source-list-additions.sh"
+    source      = "./files/source-list-additions.sh"
+  }
+  provisioner "file" {
+    destination = "/usr/local/sbin/install-dependencies.sh"
+    source      = "./files/install-dependencies.sh"
   }
 }
