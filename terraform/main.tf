@@ -47,7 +47,7 @@ resource "aws_autoscaling_group" "runners" {
 resource "aws_autoscaling_policy" "example" {
   name                   = "foobar3-terraform-test"
   autoscaling_group_name = aws_autoscaling_group.runners.name
-  policy_type = 
+  policy_type = "SimpleScaling"
 }
 
 resource "aws_launch_template" "runners" {

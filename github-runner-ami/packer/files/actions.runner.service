@@ -1,16 +1,21 @@
 [Unit]
 Description=GitHub Actions Runner
-After=network.target
-Requires=actions.runner-credentials.service
+After=network.target actions.runner-supervisor.service
+Requires=actions.runner-supervisor.service
+BindsTo=actions.runner-supervisor.service
+
 [Service]
 ExecStartPre=!/usr/local/sbin/runner-cleanup-workdir.sh
 ExecStart=/home/runner/actions-runner/run.sh --once --startuptype service
+ExecStop=/usr/local/bin/stop-runner-if-no-job.sh $MAINPID
 EnvironmentFile=/etc/environment
+Environment=GITHUB_ACTIONS_RUNNER_CHANNEL_TIMEOUT=300
 User=runner
 WorkingDirectory=/home/runner/actions-runner
-KillMode=process
+KillMode=mixed
 KillSignal=SIGTERM
 TimeoutStopSec=5min
-Restart=always
+Restart=on-success
+
 [Install]
 WantedBy=multi-user.target

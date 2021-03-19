@@ -1,0 +1,13 @@
+[Unit]
+Description=Fetch credentials and supervise GitHub Actions Runner
+After=network.target
+Before=actions.runner.service
+
+[Service]
+Type=notify
+ExecStart=/opt/runner-supervisor/bin/python /opt/runner-supervisor/bin/runner-supervisor
+# We need to run as root to have the ability to open the netlink connector socket
+User=root
+WorkingDirectory=/home/runner/actions-runner
+Restart=always
+EnvironmentFile=/etc/environment

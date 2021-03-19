@@ -53,6 +53,10 @@ build {
     source      = "./files/runner-cleanup-workdir.sh"
   }
   provisioner "file" {
+    destination = "/usr/local/sbin/stop-runner-if-no-job.sh"
+    source      = "./files/stop-runner-if-no-job.sh"
+  }
+  provisioner "file" {
     destination = "/etc/sudoers.d/runner"
     source      = "./files/runner"
   }
