@@ -1,0 +1,2 @@
+echo "ASG_GROUP_NAME=$(aws ec2 describe-tags --filter Name=resource-id,Values=$(cloud-init query instance_id) Name=key,Values=aws:autoscaling:groupName \
+    | jq -r '@sh "\(.Tags[0].Value)"')" >> /etc/environment
