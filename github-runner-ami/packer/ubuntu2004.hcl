@@ -1,35 +1,54 @@
+variable "vpc_id" {
+  type = string
+}
+variable "ami_name" {
+  type = string
+}
+variable "aws_region" {
+  type = string
+}
+variable "subnet_id" {
+  type = string
+}
+variable "packer_role" {
+  type = string
+}
+variable "runner_version" {
+  type = string
+}
+variable "kms_key_arn" {
+  type = string
+}
+variable "session_manager_instance_profile" { 
+  type = string
+}
 source "amazon-ebs" "runner_builder" {
   type = "amazon-ebs"
   assume_role {
-    role_arn     = "arn:aws:iam::ACCOUNT_ID:role/ROLE_NAME"
-    session_name = "SESSION_NAME"
-    external_id  = "EXTERNAL_ID"
+    role_arn     = var.packer_role
+    session_name = var.runner_version
   }
   region = "us-east-1"
-  ami_name = "airflow-ci-runner"
-  ami_regions = "us-west"
+  ami_name = "${var.ami_name}-${var.runner_version}"
+  ami_regions = var.aws_region
   tags {
     tag = "example"
   }
   encrypt_boot = true
-  kms_key_id = "key id"
+  kms_key_id = var.kms_key_arn
   instance_type = "t2.micro"
   communicator = "ssh"
   ssh_username = "ubuntu"
   ssh_interface = "session_manager"
-  iam_instance_profile = "{{user `iam_instance_profile`}}"
-  subnet_filter {
-    filters = {
-          "tag:Class": "build"
-    }
-    most_free = true
-    random = false
-  }
+  iam_instance_profile = var.session_manager_instance_profile
+  subnet_id = var.subnet_id
+  vpc_id = var.vpc_id
   source_ami_filter {
     filters = {
-       image-id = "ami-0885b1f6bd170450c"
+       "image-id" = "ami-0885b1f6bd170450c"
+       "root-device-type": "ebs"
     }
-    owners = ["self"]
+    owners = ["amazon"]
     most_recent = true
   }
 }
@@ -43,6 +62,13 @@ build {
       inline = [
         "echo Connected via SSM at '${build.User}@${build.Host}:${build.Port}'"
       ]
+  }
+  provisioner "file" {
+    destination = "/usr/local/sbin/mount_setup.sh"
+    source      = "./files/mount_setup.sh"
+  }
+  provisioner "shell" {
+    inline = ["sh mounts_setup.sh"]
   }
   provisioner "file" {
     destination = "/etc/systemd/system/actions.runner.service"
@@ -91,5 +117,12 @@ build {
   provisioner "file" {
     destination = "/usr/local/sbin/install-dependencies.sh"
     source      = "./files/install-dependencies.sh"
+  }
+  provisioner "file" {
+    destination = "/usr/local/sbin/runner_bootstrap.sh"
+    source      = "./files/runner_boostrap.sh"
+  }
+  provisioner "shell-local" {
+    inline = ["sh ./usr/local/sbin/install-dependencies.sh", "sh ./usr/local/sbin/source-list-additions.sh", "/usr/local/sbin/runner_bootstrap.sh"]
   }
 }
