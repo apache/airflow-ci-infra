@@ -1,5 +1,5 @@
 #cloud-config
-# 2021-02-19 21:48
+# 2021-03-20 14:00 CET
 
 mounts:
   - [tmpfs, /tmp, tmpfs, "defaults,noatime,size=10%"]
@@ -30,6 +30,7 @@ runcmd:
     - -c
     # https://github.com/actions/virtual-environments/blob/525f79f479cca77aef4e0a680548b65534c64a18/images/linux/scripts/installers/docker-compose.sh
     - |
+      set -eu -o pipefail
       URL=$(curl -s https://api.github.com/repos/docker/compose/releases/latest | jq -r '.assets[].browser_download_url | select(endswith("docker-compose-Linux-x86_64"))')
       curl -L $URL -o /usr/local/bin/docker-compose
       chmod +x /usr/local/bin/docker-compose
@@ -37,7 +38,7 @@ runcmd:
     - bash
     - -c
     - |
-      set -exu -o pipefail
+      set -eu -o pipefail
       echo "AWS_DEFAULT_REGION=$(cloud-init query region)" >> /etc/environment
       # Set an env var (that is visible in runners) that will let us know we are on a self-hosted runner
       echo 'AIRFLOW_SELF_HOSTED_RUNNER="[\"self-hosted\"]"' >> /etc/environment
@@ -51,13 +52,14 @@ runcmd:
     - bash
     - -c
     - |
+      set -eu -o pipefail
       python3 -mvenv /opt/runner-supervisor
       /opt/runner-supervisor/bin/pip install -U pip python-dynamodb-lock-whatnick==0.9.3 click==7.1.2 psutil 'tenacity~=6.0'
   -
     - bash
     - -c
     - |
-      set -exu -o pipefail
+      set -eu -o pipefail
 
       usermod -G docker -a runner
 
@@ -76,10 +78,6 @@ runcmd:
       aws s3 cp s3://airflow-ci-assets/runner-supervisor.py /opt/runner-supervisor/bin/runner-supervisor
       chmod 755 /opt/runner-supervisor/bin/runner-supervisor
 
-      # Log in to a paid docker user to get unlimited docker pulls
-      aws ssm get-parameter --with-decryption --name /runners/apache/airflow/dockerPassword | \
-        jq .Parameter.Value -r | \
-        sudo -u runner docker login --username airflowcirunners --password-stdin
     - 2.277.1-airflow3
   - [systemctl, enable, --now, iptables.service]
   # Restart docker after applying the user firewall -- else some rules/chains might be list!
@@ -90,8 +88,8 @@ runcmd:
     - bash
     - -c
     - |
+      set -eu -o pipefail
       echo "Pre-loading commonly used docker images from S3"
-      set -eux -o pipefail
       aws s3 cp s3://airflow-ci-assets/pre-baked-images.tar.gz - | docker load
 
 write_files:
@@ -123,9 +121,15 @@ write_files:
   - path: /usr/local/sbin/runner-cleanup-workdir.sh
     content: |
       #!/bin/bash
+      set -eu -o pipefail
       echo "Left-over containers:"
       docker ps -a
       docker ps -qa | xargs --verbose --no-run-if-empty docker rm -fv
+
+      echo "Log in to a paid docker user to get unlimited docker pulls"
+      aws ssm get-parameter --with-decryption --name /runners/apache/airflow/dockerPassword | \
+        jq .Parameter.Value -r | \
+        sudo -u runner docker login --username airflowcirunners --password-stdin
 
       if [[ -d ~runner/actions-runner/_work/airflow/airflow ]]; then
         cd ~runner/actions-runner/_work/airflow/airflow
@@ -145,7 +149,7 @@ write_files:
   - path: /usr/local/bin/stop-runner-if-no-job.sh
     content: |
       #!/bin/bash
-      set -u
+      set -eu -o pipefail
 
       MAINPID="${MAINPID:-${1:-}}"
 
@@ -195,7 +199,7 @@ write_files:
     permissions: '0775'
     content: |
       #!/bin/bash
-
+      set -eu -o pipefail
       if pgrep -c Runner.Worker >/dev/null; then
           # Only report metric when we're doing something -- no point paying to submit zeros
           aws cloudwatch put-metric-data --metric-name jobs-running --value "$(pgrep -c Runner.Worker)" --namespace github.actions
