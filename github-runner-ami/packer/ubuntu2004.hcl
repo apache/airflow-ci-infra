@@ -10,7 +10,7 @@ variable "aws_region" {
 variable "subnet_id" {
   type = string
 }
-variable "packer_role" {
+variable "packer_role_arn" {
   type = string
 }
 variable "runner_version" {
@@ -25,7 +25,7 @@ variable "session_manager_instance_profile" {
 source "amazon-ebs" "runner_builder" {
   type = "amazon-ebs"
   assume_role {
-    role_arn     = var.packer_role
+    role_arn     = var.packer_role_arn
     session_name = var.runner_version
   }
   region = "us-east-1"

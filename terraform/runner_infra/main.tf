@@ -1,3 +1,17 @@
+terraform {
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 3.0"
+    }
+  }
+}
+
+# Configure the AWS Provider
+provider "aws" {
+  region = "us-east-1"
+}
+
 module "vpc" {
   source = "terraform-aws-modules/vpc/aws"
   name = "github-runners-vpc"
@@ -45,7 +59,7 @@ resource "aws_autoscaling_group" "runners" {
 }
 
 resource "aws_autoscaling_policy" "example" {
-  name                   = "foobar3-terraform-test"
+  name                   = "aws_autoscaling_policy"
   autoscaling_group_name = aws_autoscaling_group.runners.name
   policy_type = "SimpleScaling"
 }
@@ -141,7 +155,7 @@ EOF
 
 resource "aws_iam_role_policy" "test_policy" {
   name = "RunnerPolicy"
-  role = aws_iam_role.test_role.id
+  role = aws_iam_role.runner_role.id
 
   policy = <<-EOF
   {
@@ -209,9 +223,9 @@ resource "aws_iam_role_policy" "test_policy" {
   EOF
 }
 
-resource "aws_iam_role_policy" "test_policy" {
+resource "aws_iam_role_policy" "github_cloud_watch_logs" {
   name = "GithubCloudWatchLogs"
-  role = aws_iam_role.test_role.id
+  role = aws_iam_role.runner_role.id
 
   policy = <<-EOF
   {
@@ -239,11 +253,50 @@ resource "aws_iam_role_policy" "test_policy" {
 }
 
 resource "aws_iam_role_policy_attachment" "test-attach" {
-  role       = aws_iam_role.role.name
-  policy_arn = aws_iam_policy.policy.arn
+  role       = aws_iam_role.runner_role.name
+  policy_arn = aws_iam_policy.test_policy.arn
 }
 resource "aws_iam_role_policy_attachment" "test-attach" {
-  role       = aws_iam_role.role.name
-  policy_arn = aws_iam_policy.policy.arn
+  role       = aws_iam_role.runner_role.name
+  policy_arn = aws_iam_policy.github_cloud_watch_logs.arn
 }
 
+resource "aws_iam_role" "iam_for_lambda" {
+  name = "iam_for_lambda"
+
+  assume_role_policy = <<EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Action": "sts:AssumeRole",
+      "Principal": {
+        "Service": "lambda.amazonaws.com"
+      },
+      "Effect": "Allow",
+      "Sid": ""
+    }
+  ]
+}
+EOF
+}
+
+resource "aws_lambda_function" "lambda_scale_out_runners" {
+  filename      = "lambda_function_payload.zip"
+  function_name = "lambda_scale_out_runners"
+  role          = aws_iam_role.iam_for_lambda.arn
+  handler       = "exports.test"
+
+  # The filebase64sha256() function is available in Terraform 0.11.12 and later
+  # For Terraform 0.11.11 and earlier, use the base64sha256() function and the file() function:
+  # source_code_hash = "${base64sha256(file("lambda_function_payload.zip"))}"
+  source_code_hash = filebase64sha256("lambda_function_payload.zip")
+
+  runtime = "python3.7"
+
+  environment {
+    variables = {
+      foo = "bar"
+    }
+  }
+}
