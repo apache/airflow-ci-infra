@@ -5,11 +5,16 @@ terraform {
       version = "~> 3.0"
     }
   }
+  backend "s3" {
+    bucket = "airflow-cf-tfstate"
+    key    = "tf-state/packer-roles"
+    region = "us-east-2"
+  }
 }
 
 # Configure the AWS Provider
 provider "aws" {
-  region = "us-east-1"
+  region = "us-east-2"
 }
 
 ### PACKER NEED IAM ROLE ###

@@ -43,10 +43,11 @@ module "subnet_addrs" {
 
 resource "aws_autoscaling_group" "runners" {
   name                      = "ci-runners-asg"
-  max_size                  = 5
-  min_size                  = 2
+  max_size                  = 20
+  min_size                  = 0
+  desired_capacity          = 20
   health_check_grace_period = 300
-  health_check_type         = "ELB"
+  health_check_type         = "EC2"
   force_delete              = true
   placement_group           = aws_placement_group.test.id
   launch_configuration      = aws_launch_configuration.foobar.name
@@ -58,18 +59,94 @@ resource "aws_autoscaling_group" "runners" {
   }
 }
 
-resource "aws_autoscaling_policy" "example" {
+resource "aws_autoscaling_policy" "scale_runner_policy" {
   name                   = "aws_autoscaling_policy"
   autoscaling_group_name = aws_autoscaling_group.runners.name
-  policy_type = "SimpleScaling"
+  policy_type = "StepScaling"
+  adjustment_type = "ChangeInCapacity"
+
+  step_adjustment {
+    scaling_adjustment          = -1
+    metric_interval_lower_bound = 1
+    metric_interval_upper_bound = 2
+  }
+  step_adjustment {
+    scaling_adjustment          = -2
+    metric_interval_lower_bound = 3
+    metric_interval_upper_bound = 4
+  }
+  step_adjustment {
+    scaling_adjustment          = -3
+    metric_interval_lower_bound = 5
+    metric_interval_upper_bound = 9
+  }
+  step_adjustment {
+    scaling_adjustment          = -7
+    metric_interval_lower_bound = 10
+    metric_interval_upper_bound = 19
+  }
+  step_adjustment {
+    scaling_adjustment          = -15
+    metric_interval_lower_bound = 20
+    metric_interval_upper_bound = 29
+  }
+  step_adjustment {
+    scaling_adjustment          = -24
+    metric_interval_lower_bound = 30
+  }
+}
+
+resource "aws_cloudwatch_metric_alarm" "scale-gh-runners-asg" {
+  alarm_name          = "scale-gh-runners-asg"
+  comparison_operator = "GreaterThanThreshold"
+  evaluation_periods  = "3"
+  period              = "60"
+  threshold           = "0"
+  datapoints_to_alarm = "3"
+
+  metric_query {
+    id          = "e1"
+    expression  = "m2-m1"
+    label       = "Idle instances"
+    return_data = "true"
+  }
+
+  metric_query {
+    id = "m2"
+
+    metric {
+      metric_name = "GroupInServiceInstances"
+      namespace   = "AWS/AutoScaling"
+      period      = "60"
+      stat        = "Sum"
+        
+      dimensions = {
+        AutoScalingGroupName = aws_autoscaling_group.runners.name
+      }
+    }
+  }
+
+  metric_query {
+    id = "m1"
+
+    metric {
+      metric_name = "jobs-running"
+      namespace   = "github.actions"
+      stat        = "Sum"
+      period      = "60"
+    }
+  }
+
+  alarm_description = "This metric monitors ec2 cpu utilization"
+  alarm_actions     = [aws_autoscaling_policy.scale_runner_policy.arn]
 }
 
 resource "aws_launch_template" "runners" {
   name_prefix   = "ci-runner"
   image_id      = data.aws_ami.runner.id
-  instance_type = "t2.micro"
+  instance_type = "r5a.2xlarge"
   vpc_security_group_ids = [aws_security_group.github_runners.id]
-  user_data = filebase64("${path.module}/example.sh")
+  user_data = filebase64("${path.module}/user_data.sh")
 
   network_interfaces {
     associate_public_ip_address = true
@@ -153,7 +230,7 @@ EOF
   }
 }
 
-resource "aws_iam_role_policy" "test_policy" {
+resource "aws_iam_role_policy" "runner_policy" {
   name = "RunnerPolicy"
   role = aws_iam_role.runner_role.id
 
@@ -176,6 +253,7 @@ resource "aws_iam_role_policy" "test_policy" {
             "Sid": "VisualEditor1",
             "Effect": "Allow",
             "Action": [
+                "autoscaling:DescribeAutoScalingInstances",
                 "ssm:DescribeParameters",
                 "ec2:DescribeTags"
             ],
@@ -197,9 +275,9 @@ resource "aws_iam_role_policy" "test_policy" {
                 "autoscaling:RecordLifecycleActionHeartbeat"
             ],
             "Resource": [
-                "arn:aws:dynamodb:*:827901512104:table/GitHubRunnerLocks",
+                "${aws_dynamodb_table.github-runner-locks.arn}",
                 "arn:aws:sqs:*:827901512104:actions-runner-requests",
-                "arn:aws:autoscaling:*:827901512104:autoScalingGroup:*:autoScalingGroupName/AshbRunnerASG",
+                "${aws_autoscaling_group.runners.arn}",
                 "arn:aws:s3:::airflow-ci-assets//*",
                 "arn:aws:s3:::airflow-ci-assets"
             ]
@@ -215,7 +293,7 @@ resource "aws_iam_role_policy" "test_policy" {
             ],
             "Resource": [
                 "arn:aws:ssm:*:827901512104:parameter/runners//*",
-                "arn:aws:dynamodb:*:827901512104:table/GithubRunnerQueue"
+                "${aws_dynamodb_table.github-runner-queue.arn}"
             ]
         }
     ]
@@ -252,11 +330,11 @@ resource "aws_iam_role_policy" "github_cloud_watch_logs" {
   EOF
 }
 
-resource "aws_iam_role_policy_attachment" "test-attach" {
+resource "aws_iam_role_policy_attachment" "runner-role-runner-policy" {
   role       = aws_iam_role.runner_role.name
-  policy_arn = aws_iam_policy.test_policy.arn
+  policy_arn = aws_iam_policy.runner_policy.arn
 }
-resource "aws_iam_role_policy_attachment" "test-attach" {
+resource "aws_iam_role_policy_attachment" "runner-role-cloudwatch-policy" {
   role       = aws_iam_role.runner_role.name
   policy_arn = aws_iam_policy.github_cloud_watch_logs.arn
 }
@@ -280,6 +358,48 @@ resource "aws_iam_role" "iam_for_lambda" {
 }
 EOF
 }
+
+resource "aws_iam_role_policy" "github_cloud_watch_logs" {
+  name = "GithubCloudWatchLogs"
+  role = aws_iam_role.runner_role.id
+
+  policy = <<-EOF
+  {
+    "Version": "2012-10-17",
+    "Statement": [
+      {
+            "Sid": "VisualEditor0",
+            "Effect": "Allow",
+            "Action": [
+                "logs:CreateLogStream",
+                "kms:Decrypt",
+                "autoscaling:SetDesiredCapacity",
+                "ssm:GetParameter",
+                "logs:CreateLogGroup",
+                "logs:PutLogEvents",
+                "dynamodb:UpdateItem"
+            ],
+            "Resource": [
+                "arn:aws:ssm:*:827901512104:parameter/runners/*/configOverlay",
+                "${aws_autoscaling_group.runners.arn}",
+                "arn:aws:kms:*:827901512104:key/48a58710-7ac6-4f88-995f-758a6a450faa",
+                "${aws_dynamodb_table.github-runner-queue.arn}",
+                "arn:*:logs:*:*:*"
+            ]
+      },
+      {
+            "Sid": "VisualEditor1",
+            "Effect": "Allow",
+            "Action": [
+                "autoscaling:DescribeAutoScalingGroups"
+            ],
+            "Resource": "*"
+      }
+    ]
+  }
+  EOF
+}
+
 
 resource "aws_lambda_function" "lambda_scale_out_runners" {
   filename      = "lambda_function_payload.zip"
