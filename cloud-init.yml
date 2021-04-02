@@ -84,13 +84,6 @@ runcmd:
   - [systemctl, restart, docker.service]
   - [systemctl, enable, --now, vector.service]
   - [systemctl, enable, --now, actions.runner.service]
-  -
-    - bash
-    - -c
-    - |
-      set -eu -o pipefail
-      echo "Pre-loading commonly used docker images from S3"
-      aws s3 cp s3://airflow-ci-assets/pre-baked-images.tar.gz - | docker load
 
 write_files:
   - path: /etc/systemd/system/actions.runner.service
