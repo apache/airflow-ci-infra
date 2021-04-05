@@ -6,7 +6,7 @@ terraform {
     }
   }
   backend "s3" {
-    bucket = "airflow-cf-tfstate"
+    bucket = "airflow-ci-tfstate"
     key    = "tf-state/packer-roles"
     region = "us-east-2"
   }
@@ -19,7 +19,7 @@ provider "aws" {
 
 ### PACKER NEED IAM ROLE ###
 resource "aws_iam_role_policy" "packer_policy" {
-  name = "Packer Policy"
+  name = "packer-base-policy"
   role = aws_iam_role.packer_role.id
 
   policy = <<-EOF
@@ -72,7 +72,7 @@ resource "aws_iam_role_policy" "packer_policy" {
 }
 
 resource "aws_iam_role" "packer_role" {
-  name = "Packer Role"
+  name = "packer-role"
 
   assume_role_policy = <<EOF
 {
@@ -95,15 +95,10 @@ EOF
   }
 }
 
-resource "aws_iam_role_policy_attachment" "attach_packer_policy" {
-  role       = aws_iam_role.packer_role.name
-  policy_arn = aws_iam_policy.packer_policy.arn
-}
-
 ### SSM ###
 
 resource "aws_iam_role" "packer_ssm_role" {
-  name = "Packer SSM Role"
+  name = "packer-ssm-role"
 
   assume_role_policy = <<EOF
 {
@@ -135,3 +130,4 @@ resource "aws_iam_instance_profile" "packer_ssm_profile" {
   name = "packer_ssm_profile"
   role = aws_iam_role.packer_ssm_role.name
 }
+

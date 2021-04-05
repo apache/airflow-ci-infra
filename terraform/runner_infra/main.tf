@@ -207,7 +207,7 @@ resource "aws_security_group" "github_runners" {
 }
 
 resource "aws_iam_role" "runner_role" {
-  name = "Runner Policy"
+  name = "runner-role"
 
   assume_role_policy = <<EOF
 {
@@ -231,7 +231,7 @@ EOF
 }
 
 resource "aws_iam_role_policy" "runner_policy" {
-  name = "RunnerPolicy"
+  name = "runners-policy"
   role = aws_iam_role.runner_role.id
 
   policy = <<-EOF
@@ -302,7 +302,7 @@ resource "aws_iam_role_policy" "runner_policy" {
 }
 
 resource "aws_iam_role_policy" "github_cloud_watch_logs" {
-  name = "GithubCloudWatchLogs"
+  name = "gh-cloudwatch-logs-policy"
   role = aws_iam_role.runner_role.id
 
   policy = <<-EOF
@@ -328,15 +328,6 @@ resource "aws_iam_role_policy" "github_cloud_watch_logs" {
     ]
   }
   EOF
-}
-
-resource "aws_iam_role_policy_attachment" "runner-role-runner-policy" {
-  role       = aws_iam_role.runner_role.name
-  policy_arn = aws_iam_policy.runner_policy.arn
-}
-resource "aws_iam_role_policy_attachment" "runner-role-cloudwatch-policy" {
-  role       = aws_iam_role.runner_role.name
-  policy_arn = aws_iam_policy.github_cloud_watch_logs.arn
 }
 
 resource "aws_iam_role" "iam_for_lambda" {
