@@ -112,7 +112,17 @@ TABLE_NAME = os.getenv('COUNTER_TABLE', 'GithubRunnerQueue')
     default='~runner/actions-runner',
 )
 def main(repo, output_folder, user):
-    log.info("Starting...")
+    global INSTANCE_ID
+    # Notify the ASG LifeCycle hook that we are now In Service and ready to
+    # process requests/safe to be shut down
+
+    # Fetch current instance ID from where cloutinit writes it to
+    if not INSTANCE_ID:
+        with open('/var/lib/cloud/data/instance-id') as fh:
+            INSTANCE_ID = fh.readline().strip()
+
+    log.info("Starting on %s...", INSTANCE_ID)
+
     output_folder = os.path.expanduser(output_folder)
 
     short_time = datetime.timedelta(microseconds=1)
@@ -548,6 +558,7 @@ class ProcessWatcher:
                 listener_found = True
 
         if self.in_termating_lifecycle and not listener_found:
+            log.info("Runner.Listener process not found - OkayToTerminate instance")
             complete_asg_lifecycle_hook('OkayToTerminate')
 
     def check_still_alive(self):
@@ -608,6 +619,11 @@ class ProcessWatcher:
         if not OWN_ASG:
             # Not part of an ASG
             return
+
+        if self.in_termating_lifecycle:
+            log.info("Not trying to SetInstanceProtection, we are already in the terminating lifecycle step")
+            return
+
         asg_client = boto3.client('autoscaling')
         try:
             self._protect_from_scale_in(asg_client, protect)
@@ -690,6 +706,7 @@ class ProcessWatcher:
                 try:
                     proc = psutil.Process(detail.pid)
                     if proc.name() == "Runner.Listener":
+                        log.info("Runner.Listener process exited - OkayToTerminate instance")
                         complete_asg_lifecycle_hook('OkayToTerminate')
                 except psutil.NoSuchProcess:
                     # We lost the race, process has already exited. If it was that short lived it wasn't that
