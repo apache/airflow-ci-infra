@@ -19,20 +19,20 @@ variable "runner_version" {
 variable "kms_key_arn" {
   type = string
 }
-variable "session_manager_instance_profile" { 
+variable "session_manager_instance_profile_name" { 
   type = string
 }
 source "amazon-ebs" "runner_builder" {
-  type = "amazon-ebs"
   assume_role {
     role_arn     = var.packer_role_arn
     session_name = var.runner_version
   }
   region = "us-east-1"
   ami_name = "${var.ami_name}-${var.runner_version}"
-  ami_regions = var.aws_region
-  tags {
-    tag = "example"
+  ami_regions = [var.aws_region]
+  tag {
+    key                 = "ami"
+    value               = "github-runner-ami"
   }
   encrypt_boot = true
   kms_key_id = var.kms_key_arn
@@ -40,7 +40,7 @@ source "amazon-ebs" "runner_builder" {
   communicator = "ssh"
   ssh_username = "ubuntu"
   ssh_interface = "session_manager"
-  iam_instance_profile = var.session_manager_instance_profile
+  iam_instance_profile = var.session_manager_instance_profile_name
   subnet_id = var.subnet_id
   vpc_id = var.vpc_id
   source_ami_filter {
@@ -64,8 +64,8 @@ build {
       ]
   }
   provisioner "file" {
-    destination = "/usr/local/sbin/mount_setup.sh"
-    source      = "./files/mount_setup.sh"
+    destination = "/usr/local/sbin/mounts_setup.sh"
+    source      = "./files/mounts_setup.sh"
   }
   provisioner "shell" {
     inline = ["sh mounts_setup.sh"]
@@ -91,8 +91,8 @@ build {
     source      = "./files/rules.v4"
   }
   provisioner "file" {
-    destination = "/usr/local/sbin/actions-runner-ec2-reporting"
-    source      = "./files/actions-runner-ec2-reporting"
+    destination = "/usr/local/sbin/actions-runner-ec2-reporting.sh"
+    source      = "./files/actions-runner-ec2-reporting.sh"
   }
   provisioner "file" {
     destination = "/etc/cron.d/cloudwatch-metrics-github-runners"
@@ -120,7 +120,7 @@ build {
   }
   provisioner "file" {
     destination = "/usr/local/sbin/runner_bootstrap.sh"
-    source      = "./files/runner_boostrap.sh"
+    source      = "./files/runner_bootstrap.sh"
   }
   provisioner "shell-local" {
     inline = ["sh ./usr/local/sbin/install-dependencies.sh", "sh ./usr/local/sbin/source-list-additions.sh", "/usr/local/sbin/runner_bootstrap.sh"]
