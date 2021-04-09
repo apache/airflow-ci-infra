@@ -43,7 +43,7 @@ module "subnet_addrs" {
 
 resource "aws_autoscaling_group" "runners" {
   name                      = "ci-runners-asg"
-  max_size                  = 20
+  max_size                  = 15
   min_size                  = 0
   desired_capacity          = 20
   health_check_grace_period = 300
