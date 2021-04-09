@@ -27,7 +27,7 @@ resource "aws_iam_role_policy" "packer_policy" {
     "Version": "2012-10-17",
     "Statement": [
       {
-            "Sid": "03-29-2021",
+            "Sid": "04092021",
             "Effect": "Allow",
             "Action": [
                 "ec2:AttachVolume",
@@ -127,7 +127,7 @@ resource "aws_iam_role_policy_attachment" "attach_packer_ssm_policy" {
 }
 
 resource "aws_iam_instance_profile" "packer_ssm_profile" {
-  name = "packer_ssm_profile"
+  name = "packer_ssm_instance_profile"
   role = aws_iam_role.packer_ssm_role.name
 }
 
