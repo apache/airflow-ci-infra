@@ -22,12 +22,15 @@ variable "kms_key_arn" {
 variable "session_manager_instance_profile_name" { 
   type = string
 }
+
 source "amazon-ebs" "runner_builder" {
   assume_role {
     role_arn     = var.packer_role_arn
     session_name = var.runner_version
   }
-  region = "us-east-1"
+  #access_key = ""
+  #secret_key = ""
+  region = var.aws_region
   ami_name = "${var.ami_name}-${var.runner_version}"
   ami_regions = [var.aws_region]
   tag {
@@ -45,10 +48,11 @@ source "amazon-ebs" "runner_builder" {
   vpc_id = var.vpc_id
   source_ami_filter {
     filters = {
-       "image-id" = "ami-0885b1f6bd170450c"
-       "root-device-type": "ebs"
+       virtualization-type = "hvm"
+       name = "ubuntu/images/*buntu-focal-20.04-amd64-server-*"
+       root-device-type = "ebs"
     }
-    owners = ["amazon"]
+    owners = ["099720109477"]
     most_recent = true
   }
 }

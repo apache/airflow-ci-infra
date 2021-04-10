@@ -121,6 +121,28 @@ EOF
   }
 }
 
+resource "aws_iam_role_policy" "packer_ssm_policy" {
+  name = "packer-ssm-policy"
+  role = aws_iam_role.packer_ssm_role.id
+
+  policy = <<-EOF
+  {
+    "Version": "2012-10-17",
+    "Statement": [
+      {
+        "Sid": "04092021",
+        "Effect": "Allow",
+        "Action": [
+          "ssm:StartSession"
+        ],
+      
+        "Resource": "arn:aws:ec2:*:*:instance/*"
+      }
+    ]
+  }
+  EOF
+}
+
 resource "aws_iam_role_policy_attachment" "attach_packer_ssm_policy" {
   role       = aws_iam_role.packer_ssm_role.name
   policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
