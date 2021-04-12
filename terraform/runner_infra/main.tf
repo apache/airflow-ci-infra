@@ -1,3 +1,20 @@
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+
 terraform {
   required_providers {
     aws = {
@@ -52,7 +69,7 @@ resource "aws_autoscaling_group" "runners" {
   placement_group           = aws_placement_group.test.id
   launch_configuration      = aws_launch_configuration.foobar.name
   vpc_zone_identifier       = module.vpc.public_subnets
-  tags = var.tags 
+  tags = var.tags
   launch_template {
     id      = aws_launch_template.runners.id
     version = "$Latest"
@@ -119,7 +136,7 @@ resource "aws_cloudwatch_metric_alarm" "scale-gh-runners-asg" {
       namespace   = "AWS/AutoScaling"
       period      = "60"
       stat        = "Sum"
-        
+
       dimensions = {
         AutoScalingGroupName = aws_autoscaling_group.runners.name
       }
@@ -201,7 +218,7 @@ resource "aws_dynamodb_table" "github-runner-queue" {
 
 resource "aws_security_group" "github_runners" {
   name = "Github Runner"
-  vpc_id = module.vpc.vpc_id	
+  vpc_id = module.vpc.vpc_id
   description = "Security group to enable github runners "
   tags = var.tags
 }
