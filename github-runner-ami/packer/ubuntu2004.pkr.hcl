@@ -126,7 +126,7 @@ build {
     destination = "/usr/local/sbin/runner_bootstrap.sh"
     source      = "./files/runner_bootstrap.sh"
   }
-  provisioner "shell-local" {
+  provisioner "shell" {
     inline = ["sh ./usr/local/sbin/install-dependencies.sh", "sh ./usr/local/sbin/source-list-additions.sh", "/usr/local/sbin/runner_bootstrap.sh"]
   }
 }
