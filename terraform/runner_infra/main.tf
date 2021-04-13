@@ -408,9 +408,14 @@ resource "aws_iam_role_policy" "github_cloud_watch_logs" {
   EOF
 }
 
+data "archive_file" "lambda_zip" {
+  type        = "zip"
+  source_dir = "${path.module}/../../lambdas/scale_out_runner"
+  output_path = "${path.module}/lambda_scale_out_runners.zip"
+}
 
 resource "aws_lambda_function" "lambda_scale_out_runners" {
-  filename      = "lambda_function_payload.zip"
+  filename      = "${data.archive_file.lambda_zip.output_path}"
   function_name = "lambda_scale_out_runners"
   role          = aws_iam_role.iam_for_lambda.arn
   handler       = "exports.test"
@@ -418,7 +423,7 @@ resource "aws_lambda_function" "lambda_scale_out_runners" {
   # The filebase64sha256() function is available in Terraform 0.11.12 and later
   # For Terraform 0.11.11 and earlier, use the base64sha256() function and the file() function:
   # source_code_hash = "${base64sha256(file("lambda_function_payload.zip"))}"
-  source_code_hash = filebase64sha256("lambda_function_payload.zip")
+  source_code_hash = "${data.archive_file.lambda_zip.output_base64sha256}"
 
   runtime = "python3.7"
 
