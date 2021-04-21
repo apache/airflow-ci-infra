@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
 # distributed with this work for additional information
@@ -17,25 +16,12 @@
 # specific language governing permissions and limitations
 # under the License.
 
-export DEBIAN_FRONTEND=noninteractive
+set -eu -o pipefail
 
-debconf-set-selections <<EOF
-iptables-persistent iptables-persistent/autosave_done boolean true
-iptables-persistent iptables-persistent/autosave_v4 boolean false
-iptables-persistent iptables-persistent/autosave_v6 boolean false
-EOF
+mkdir /etc/iptables/
 
-apt-get update
-apt-get install -y --no-install-recommends \
-            awscli \
-            build-essential \
-            docker.io \
-            git \
-            iptables-persistent \
-            jq \
-            parallel \
-            python3-dev \
-            python3-venv \
-            python3-wheel \
-            yarn \
-            vector
+install --owner root --mode=0644 --target-directory "/etc/systemd/system/" "/tmp/etc-systemd-system/"*
+install --owner root --mode=0755 --target-directory "/usr/local/sbin" "/tmp/usr-local-sbin/"*
+install --owner root --mode=0644 --target-directory "/etc/iptables" "/tmp/etc-iptables/"*
+install --owner root --mode=0644 --target-directory "/etc/cron.d" "/tmp/etc-cron.d/"*
+install --owner root --mode=0644 --target-directory "/etc/sudoers.d" "/tmp/etc-sudoers.d/"*
