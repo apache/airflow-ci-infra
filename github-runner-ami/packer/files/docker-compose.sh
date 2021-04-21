@@ -1,3 +1,5 @@
+#!/usr/bin/env bash
+
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
 # distributed with this work for additional information
@@ -15,7 +17,9 @@
 # specific language governing permissions and limitations
 # under the License.
 
-chmod 0755 /usr/local/sbin/runner-cleanup-workdir.sh root:root
-chmod 0755 /usr/local/bin/stop-runner-if-no-job.sh root:root
-chmod 0440 /etc/sudoers.d/runner root:root
-chmod 0775 /usr/local/sbin/actions-runner-ec2-reporting
+set -exu -o pipefail
+
+# https://github.com/actions/virtual-environments/blob/525f79f479cca77aef4e0a680548b65534c64a18/images/linux/scripts/installers/docker-compose.sh
+URL=$(curl -s https://api.github.com/repos/docker/compose/releases/latest | jq -r '.assets[].browser_download_url | select(endswith("docker-compose-Linux-x86_64"))')
+curl --fail -L "$URL" -o /usr/local/bin/docker-compose
+chmod +x /usr/local/bin/docker-compose
