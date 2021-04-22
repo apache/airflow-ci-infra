@@ -1,0 +1,98 @@
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+
+data_dir = "/var/lib/vector"
+
+[api]
+  enabled = true
+
+# Input data. Change me to a valid input source.
+[sources.logs]
+  type = "journald"
+  include_units = ["actions.runner.service", "actions.runner-supervisor.service"]
+
+[transforms.without_systemd_fields]
+  type = "remove_fields"
+  inputs = ["logs"]
+  fields = ["_CAP_EFFECTIVE", "_SYSTEMD_SLICE", "_SYSTEMD_CGROUP",
+    "_SYSTEMD_INVOCATION_ID", "_SELINUX_CONTEXT", "_COMM", "_BOOT_ID",
+    "_MACHINE_ID", "_STREAM_ID", "_PID", "_GID", "_UID","_TRANSPORT",
+    "__MONOTONIC_TIMESTAMP", "SYSLOG_IDENTIFIER", "PRIORITY",
+    "source_type"]
+
+[sources.runner-logs]
+  type = "file"
+  include = ["/home/runner/actions-runner/_diag/*.log"]
+
+    [sources.runner-logs.multiline]
+      start_pattern = '^\[[0-9]{4}-[0-9]{2}-[0-9]{2}'
+      mode = "halt_before"
+      condition_pattern = '^\[[0-9]{4}-[0-9]{2}-[0-9]{2}'
+      timeout_ms = 250
+
+[transforms.grok-runner-logs]
+  type = "remap"
+  inputs=["runner-logs"]
+  source = '''
+    structured, err = parse_grok(.message, "(?m)\\[%{TIMESTAMP_ISO8601:timestamp} %{LOGLEVEL:level} %{NOTSPACE:logger}\\] %{GREEDYDATA:message}")
+
+    if err != null {
+      .err = err
+    } else {
+      . = merge(., structured)
+    }
+  '''
+[transforms.filter-runner-logs]
+  type = "filter"
+  inputs = ['grok-runner-logs']
+  condition.type = "remap"
+  condition.source = '''
+    if .logger == "JobServerQueue" {
+      !match!(.message, r'Try to append \d+ batches web console lines for record')
+    } else if .logger == "HostContext" {
+      !starts_with!(.message, "Well known directory")
+    } else {
+      true
+    }
+  '''
+
+[sources.job-logs]
+  type = "file"
+  include = ["/home/runner/actions-runner/_diag/pages/*.log"]
+
+[transforms.grok-job-logs]
+  type = "remap"
+  inputs = ["job-logs"]
+  source = '''
+    structured, err = parse_grok(.message, "%{TIMESTAMP_ISO8601:timestamp} %{GREEDYDATA:message}")
+
+    if err == null {
+      . = merge(., structured)
+      .type = "job-output"
+    }
+  '''
+
+# Output data
+[sinks.cloudwatch]
+inputs   = ["without_systemd_fields", "filter-runner-logs", "grok-job-logs"]
+type     = "aws_cloudwatch_logs"
+encoding = "json"
+create_missing_group = false
+create_missing_stream = true
+group_name = "GitHubRunners"
+stream_name = "{{ host }}"
+region = "eu-central-1"
