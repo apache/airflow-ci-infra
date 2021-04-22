@@ -89,7 +89,7 @@ build {
   # in to place with the approriate permissions via install-files.sh provisioner step
   provisioner "shell" {
     inline = [
-      "mkdir -p /tmp/etc-systemd-system /tmp/usr-local-sbin /tmp/etc-sudoers.d /tmp/etc-iptables /tmp/etc-cron.d"
+      "mkdir -p /tmp/etc-systemd-system /tmp/usr-local-sbin /tmp/usr-local-bin /tmp/etc-sudoers.d /tmp/etc-iptables /tmp/etc-cron.d /tmp/etc-vector"
     ]
   }
   provisioner "file" {
@@ -105,7 +105,7 @@ build {
     source      = "./files/runner-cleanup-workdir.sh"
   }
   provisioner "file" {
-    destination = "/tmp/usr-local-sbin/stop-runner-if-no-job.sh"
+    destination = "/tmp/usr-local-bin/stop-runner-if-no-job.sh"
     source      = "./files/stop-runner-if-no-job.sh"
   }
   provisioner "file" {
@@ -131,6 +131,10 @@ build {
   provisioner "file" {
     destination = "/tmp/runner-supervisor"
     source      = "./files/runner-supervisor.py"
+  }
+  provisioner "file" {
+    destination = "/tmp/etc-vector/vector.toml"
+    source      = "./files/vector.toml"
   }
   provisioner "shell" {
     scripts = [

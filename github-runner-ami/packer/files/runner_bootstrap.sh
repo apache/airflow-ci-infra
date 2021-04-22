@@ -39,4 +39,7 @@ install --owner root --mode 0755 /tmp/runner-supervisor /opt/runner-supervisor/b
 
 systemctl enable iptables.service
 systemctl enable vector.service
-systemctl enable actions.runner.service
+
+# We don't enable actions.runner.service here, but instead in the user-data
+# script, as otherwise it would happen to early, before we have had a chance to
+# drop the AWS_DEFAULT_REGION in to /etc/environment
