@@ -17,7 +17,6 @@
 # specific language governing permissions and limitations
 # under the License.
 
-export DEBIAN_FRONTEND=noninteractive
 
 debconf-set-selections <<EOF
 iptables-persistent iptables-persistent/autosave_done boolean true
@@ -25,8 +24,10 @@ iptables-persistent iptables-persistent/autosave_v4 boolean false
 iptables-persistent iptables-persistent/autosave_v6 boolean false
 EOF
 
+export DEBIAN_FRONTEND=noninteractive
+
 apt-get update
-apt-get install -y --no-install-recommends \
+apt-get install -yq --no-install-recommends -o Dpkg::Options::="--force-confold" \
             awscli \
             build-essential \
             docker.io \
