@@ -33,9 +33,6 @@ variable "packer_role_arn" {
 variable "runner_version" {
   type = string
 }
-variable "kms_key_arn" {
-  type = string
-}
 variable "session_manager_instance_profile_name" {
   type = string
 }
@@ -54,8 +51,7 @@ source "amazon-ebs" "runner_builder" {
     key                 = "ami"
     value               = "github-runner-ami"
   }
-  encrypt_boot = true
-  kms_key_id = var.kms_key_arn
+  encrypt_boot = false
   instance_type = "t3.micro"
   communicator = "ssh"
   ssh_username = "ubuntu"
