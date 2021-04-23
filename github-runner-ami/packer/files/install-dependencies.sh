@@ -1,3 +1,8 @@
+<<<<<<< HEAD
+=======
+#!/usr/bin/env bash
+
+>>>>>>> e036ae904379e7364c93a7f23456c3507fb749c9
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
 # distributed with this work for additional information
@@ -15,8 +20,22 @@
 # specific language governing permissions and limitations
 # under the License.
 
+<<<<<<< HEAD
 sudo apt-get update
 sudo apt-get install \
+=======
+
+debconf-set-selections <<EOF
+iptables-persistent iptables-persistent/autosave_done boolean true
+iptables-persistent iptables-persistent/autosave_v4 boolean false
+iptables-persistent iptables-persistent/autosave_v6 boolean false
+EOF
+
+export DEBIAN_FRONTEND=noninteractive
+
+apt-get update
+apt-get install -yq --no-install-recommends -o Dpkg::Options::="--force-confold" \
+>>>>>>> e036ae904379e7364c93a7f23456c3507fb749c9
             awscli \
             build-essential \
             docker.io \

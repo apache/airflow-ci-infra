@@ -1,8 +1,4 @@
-<<<<<<< HEAD
-=======
 #!/usr/bin/env bash
-
->>>>>>> e036ae904379e7364c93a7f23456c3507fb749c9
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
 # distributed with this work for additional information
@@ -20,14 +16,14 @@
 # specific language governing permissions and limitations
 # under the License.
 
-<<<<<<< HEAD
-sudo apt-key add "1646B01B86E50310"
-echo "deb https://dl.yarnpkg.com/debian/ stable main" | sudo tee /etc/apt/sources.list.d/yarn.list
-sudo apt-key add /usr/local/sbin/timber.key
-echo "deb https://repositories.timber.io/public/vector/deb/ubuntu focal main" | sudo tee /etc/apt/sources.list.d/timber.list
-=======
-apt-key adv --recv-key 0x1646B01B86E50310 "1646B01B86E50310"
-echo "deb https://dl.yarnpkg.com/debian/ stable main" > /etc/apt/sources.list.d/yarn.list
-apt-key add /tmp/timber.key
-echo "deb https://repositories.timber.io/public/vector/deb/ubuntu focal main" > /etc/apt/sources.list.d/timber.list
->>>>>>> e036ae904379e7364c93a7f23456c3507fb749c9
+set -eu -o pipefail
+
+mkdir /etc/iptables/ /etc/vector
+
+install --owner root --mode=0644 --target-directory "/etc/systemd/system/" "/tmp/etc-systemd-system/"*
+install --owner root --mode=0755 --target-directory "/usr/local/sbin" "/tmp/usr-local-sbin/"*
+install --owner root --mode=0755 --target-directory "/usr/local/bin" "/tmp/usr-local-bin/"*
+install --owner root --mode=0644 --target-directory "/etc/iptables" "/tmp/etc-iptables/"*
+install --owner root --mode=0644 --target-directory "/etc/cron.d" "/tmp/etc-cron.d/"*
+install --owner root --mode=0644 --target-directory "/etc/sudoers.d" "/tmp/etc-sudoers.d/"*
+install --owner root --mode=0644 --target-directory "/etc/vector/" "/tmp/etc-vector/"*
