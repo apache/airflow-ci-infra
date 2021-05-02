@@ -39,14 +39,21 @@ runcmd:
     - -c
     - |
       set -eu -o pipefail
-      echo "AWS_DEFAULT_REGION=$(cloud-init query region)" >> /etc/environment
+      if [[ $(cloud-init query cloud_name) == "aws" ]]; then
+          echo "AWS_DEFAULT_REGION=$(cloud-init query region)" >> /etc/environment
+      fi
+      if [[ $(cloud-init query cloud_name) == "gce" ]]; then
+          echo "GCP_DEFAULT_REGION=$(cloud-init query region)" >> /etc/environment
+      fi
       # Set an env var (that is visible in runners) that will let us know we are on a self-hosted runner
       echo 'AIRFLOW_SELF_HOSTED_RUNNER="[\"self-hosted\"]"' >> /etc/environment
       set -a
       . /etc/environment
       set +a
-      echo "ASG_GROUP_NAME=$(aws ec2 describe-tags --filter Name=resource-id,Values=$(cloud-init query instance_id) Name=key,Values=aws:autoscaling:groupName \
-            | jq -r '@sh "\(.Tags[0].Value)"')" >> /etc/environment
+      if [[ $(cloud-init query cloud_name) == "aws" ]]; then
+          echo "ASG_GROUP_NAME=$(aws ec2 describe-tags --filter Name=resource-id,Values=$(cloud-init query instance_id) Name=key,Values=aws:autoscaling:groupName \
+              | jq -r '@sh "\(.Tags[0].Value)"')" >> /etc/environment
+      fi
   - [systemctl, daemon-reload]
   -
     - bash
@@ -55,6 +62,23 @@ runcmd:
       set -eu -o pipefail
       python3 -mvenv /opt/runner-supervisor
       /opt/runner-supervisor/bin/pip install -U pip python-dynamodb-lock-whatnick==0.9.3 click==7.1.2 psutil 'tenacity~=6.0'
+  -
+    - bash
+    - -c
+    - |
+      set -eu -o pipefail
+      if [[ $(cloud-init query cloud_name) == "gce" ]]; then
+          set -a
+          . /etc/environment
+          set +a
+          python3 -mvenv /opt/aws-identity
+          gsutil cp gs://airflow-ci-assets/aws-identity-requirements.txt /opt/aws-identity-requirements.txt
+          /opt/aws-identity/bin/pip install -U pip -r /opt/aws-identity-requirements.txt
+          gsutil cp gs://airflow-ci-assets/get_aws_creds.py /opt/aws-identity/bin/get_aws_creds.py
+          chmod a+x /opt/aws-identity/bin/get_aws_creds.py
+          export HOME=/root
+          /opt/aws-identity/bin/python /opt/aws-identity/bin/get_aws_creds.py arn:aws:iam::827901512104:role/DeploymentRole
+      fi
   -
     - bash
     - -c
@@ -75,10 +99,30 @@ runcmd:
       . /etc/environment
       set +a
 
-      aws s3 cp s3://airflow-ci-assets/runner-supervisor.py /opt/runner-supervisor/bin/runner-supervisor
+      if [[ $(cloud-init query cloud_name) == "aws" ]]; then
+          aws s3 cp s3://airflow-ci-assets/runner-supervisor.py /opt/runner-supervisor/bin/runner-supervisor
+      fi
+      if [[ $(cloud-init query cloud_name) == "gce" ]]; then
+          gsutil cp gs://airflow-ci-assets/runner-supervisor.py /opt/runner-supervisor/bin/runner-supervisor
+      fi
       chmod 755 /opt/runner-supervisor/bin/runner-supervisor
-
     - 2.277.1-airflow3
+  -
+    - bash
+    - -c
+    - |
+      set -eu -o pipefail
+      if [[ $(cloud-init query cloud_name) == "gce" ]]; then
+          set -a
+          . /etc/environment
+          set +a
+          gsutil cp gs://airflow-ci-assets/requirements.txt /opt/requirements.txt
+          python3 -mvenv /opt/gcp-metrics-writer
+          /opt/gcp-metrics-writer/bin/pip install -U pip -r /opt/requirements.txt
+          gsutil cp gs://airflow-ci-assets/gcp_write_metrics_data.py /opt/gcp-metrics-writer/bin/gcp_write_metrics_data
+          chmod a+x /opt/gcp-metrics-writer/bin/gcp_write_metrics_data
+      fi
+
   - [systemctl, enable, --now, iptables.service]
   # Restart docker after applying the user firewall -- else some rules/chains might be list!
   - [systemctl, restart, docker.service]
@@ -120,9 +164,15 @@ write_files:
       docker ps -qa | xargs --verbose --no-run-if-empty docker rm -fv
 
       echo "Log in to a paid docker user to get unlimited docker pulls"
-      aws ssm get-parameter --with-decryption --name /runners/apache/airflow/dockerPassword | \
-        jq .Parameter.Value -r | \
-        sudo -u runner docker login --username airflowcirunners --password-stdin
+      if [[ $(cloud-init query cloud_name) == "aws" ]]; then
+          aws ssm get-parameter --with-decryption --name /runners/apache/airflow/dockerPassword | \
+            jq .Parameter.Value -r | \
+            sudo -u runner docker login --username airflowcirunners --password-stdin
+      fi
+      if [[ $(cloud-init query cloud_name) == "gce" ]]; then
+          gcloud secrets versions access latest --secret "runners-apache-airflow-dockerPassword" | \
+            sudo -u runner docker login --username airflowcirunners --password-stdin
+      fi
 
       if [[ -d ~runner/actions-runner/_work/airflow/airflow ]]; then
         cd ~runner/actions-runner/_work/airflow/airflow
@@ -134,7 +184,8 @@ write_files:
             git submodule deinit --all -f && \
             git submodule foreach git clean -fxd && \
             git clean -fxd \
-          "
+
+
         fi
       fi
     owner: root:root
@@ -176,7 +227,11 @@ write_files:
       runner ALL=(ALL) NOPASSWD:/usr/sbin/swapoff -a, /usr/bin/rm -f /swapfile, /usr/bin/apt clean
   - path: /etc/iptables/rules.v4
     content: |
+      #
       # Generated by iptables-save v1.8.4 on Thu Jan 14 13:59:27 2021
+      # The Metadata server IP address is the same for AWS and GCP: 169.254.169.254
+      # Which is pretty cool.
+      #
       *filter
       :INPUT ACCEPT [833:75929]
       :FORWARD DROP [0:0]
@@ -188,18 +243,42 @@ write_files:
       -A DOCKER-USER -j RETURN
       COMMIT
 
-  - path: /usr/local/sbin/actions-runner-ec2-reporting
+  - path: /usr/local/sbin/actions-runner-reporting
     permissions: '0775'
     content: |
       #!/bin/bash
       set -eu -o pipefail
       if pgrep -c Runner.Worker >/dev/null; then
           # Only report metric when we're doing something -- no point paying to submit zeros
-          aws cloudwatch put-metric-data --metric-name jobs-running --value "$(pgrep -c Runner.Worker)" --namespace github.actions
+          if [[ $(cloud-init query cloud_name) == "aws" ]]; then
+             aws cloudwatch put-metric-data --metric-name jobs-running --value "$(pgrep -c Runner.Worker)" --namespace github.actions
+          fi
+          if [[ $(cloud-init query cloud_name) == "gce" ]]; then
+             /opt/gcp-metrics-writer/bin/python /opt/gcp-metrics-writer/bin/gcp_write_metrics_data --value "$(pgrep -c Runner.Worker)"
+          fi
       fi
-  - path: /etc/cron.d/cloudwatch-metrics-github-runners
+
+  - path: /usr/local/sbin/aws-credential-retrieval
+    permissions: '0775'
     content: |
-      */1 * * * * nobody /usr/local/sbin/actions-runner-ec2-reporting
+      #!/bin/bash
+      set -eu -o pipefail
+      if [[ $(cloud-init query cloud_name) == "gce" ]]; then
+          set -a
+          . /etc/environment
+          set +a
+          export HOME=/root
+         /opt/aws-identity/bin/python /opt/aws-identity/bin/get_aws_creds.py arn:aws:iam::827901512104:role/DeploymentRole
+      fi
+
+  - path: /etc/cron.d/metrics-github-runners
+    content: |
+      */1 * * * * nobody /usr/local/sbin/actions-runner-reporting
+
+  - path: /etc/cron.d/aws-credentials-retrieval
+    content: |
+      # Runner-supervisor runs as root and it's the supervisor that needs aws info
+      */30 * * * * root /usr/local/sbin/aws-credential-retrieval
 
   - path: /etc/systemd/system/actions.runner-supervisor.service
     content: |

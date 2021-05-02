@@ -29,7 +29,8 @@ from chalice.app import Request
 app = Chalice(app_name='scale_out_runner')
 app.log.setLevel(logging.INFO)
 
-ASG_GROUP_NAME = os.getenv('ASG_NAME', 'AshbRunnerASG')
+AWS_ASG_GROUP_NAME = os.getenv('AWS_ASG_NAME', 'AshbRunnerASG')
+GCP_ASG_GROUP_NAME = os.getenv('GCP_ASG_NAME', 'AshbRunnerASG')
 TABLE_NAME = os.getenv('COUNTER_TABLE', 'GithubRunnerQueue')
 _commiters = set()
 GH_WEBHOOK_TOKEN = None
@@ -180,7 +181,7 @@ def scale_asg_if_needed(num_queued_jobs: int) -> dict:
     asg = boto3.client('autoscaling')
 
     resp = asg.describe_auto_scaling_groups(
-        AutoScalingGroupNames=[ASG_GROUP_NAME],
+        AutoScalingGroupNames=[AWS_ASG_GROUP_NAME],
     )
 
     asg_info = resp['AutoScalingGroups'][0]
@@ -199,7 +200,7 @@ def scale_asg_if_needed(num_queued_jobs: int) -> dict:
         if new_size <= max_size or current < max_size:
             try:
                 new_size = min(new_size, max_size)
-                asg.set_desired_capacity(AutoScalingGroupName=ASG_GROUP_NAME, DesiredCapacity=new_size)
+                asg.set_desired_capacity(AutoScalingGroupName=AWS_ASG_GROUP_NAME, DesiredCapacity=new_size)
                 return {'new_capcity': new_size}
             except asg.exceptions.ScalingActivityInProgressFault as e:
                 return {'error': str(e)}
