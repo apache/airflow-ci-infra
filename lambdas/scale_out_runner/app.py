@@ -20,15 +20,20 @@ import hmac
 import json
 import logging
 import os
+import re
 from typing import cast
 
 import boto3
+import requests
+import yaml
 from chalice import BadRequestError, Chalice, ForbiddenError
-from chalice.app import Request
+from chalice.app import Rate, Request
 
 app = Chalice(app_name='scale_out_runner')
 app.log.setLevel(logging.INFO)
 
+GITHUB_CI_YML = 'https://raw.githubusercontent.com/apache/airflow/master/.github/workflows/ci.yml'
+SSM_REPO_NAME = os.getenv('SSM_REPO_NAME', 'apache/airflow')
 ASG_GROUP_NAME = os.getenv('ASG_NAME', 'AshbRunnerASG')
 TABLE_NAME = os.getenv('COUNTER_TABLE', 'GithubRunnerQueue')
 _commiters = set()
@@ -101,12 +106,38 @@ def index():
     return payload
 
 
-def commiters(ssm_repo_name: str = os.getenv('SSM_REPO_NAME', 'apache/airflow')):
+@app.schedule(Rate(1, unit=Rate.DAYS))
+def sync_committers(_):
+    app.log.info("Parsing committers list from %s", GITHUB_CI_YML)
+    resp = requests.get(GITHUB_CI_YML)
+    ci_yml = yaml.load(resp.text, yaml.SafeLoader)
+    runs_on = ci_yml['jobs']['build-info']['runs-on'].replace("\n", '')
+    committers = re.findall(r"fromJSON\('(\[.*\])'\)", runs_on)[0]
+
+    client = boto3.client('ssm')
+    param_path = get_ssm_param_path(SSM_REPO_NAME)
+
+    app.log.info("Updating config overlay for %s", param_path)
+    ssm_value = {"pullRequestSecurity": {"allowedAuthors": committers}}
+    client.put_parameter(
+        Name=param_path,
+        Value=json.dumps(ssm_value),
+        Type='SecureString',
+        KeyId='<kms-id>',
+        Overwrite=True,
+    )
+
+
+def get_ssm_param_path(ssm_repo_name: str):
+    return os.path.join('/runners/', ssm_repo_name, 'configOverlay')
+
+
+def commiters(ssm_repo_name: str = SSM_REPO_NAME):
     global _commiters
 
     if not _commiters:
         client = boto3.client('ssm')
-        param_path = os.path.join('/runners/', ssm_repo_name, 'configOverlay')
+        param_path = get_ssm_param_path(ssm_repo_name)
         app.log.info("Loading config overlay from %s", param_path)
 
         try:
