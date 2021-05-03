@@ -34,6 +34,7 @@ app.log.setLevel(logging.INFO)
 
 GITHUB_CI_YML = 'https://raw.githubusercontent.com/apache/airflow/master/.github/workflows/ci.yml'
 SSM_REPO_NAME = os.getenv('SSM_REPO_NAME', 'apache/airflow')
+KMS_ID = os.getenv("KMS_ID", "airflow-ci")
 ASG_GROUP_NAME = os.getenv('ASG_NAME', 'AshbRunnerASG')
 TABLE_NAME = os.getenv('COUNTER_TABLE', 'GithubRunnerQueue')
 _commiters = set()
@@ -123,7 +124,7 @@ def sync_committers(_):
         Name=param_path,
         Value=json.dumps(ssm_value),
         Type='SecureString',
-        KeyId='<kms-id>',
+        KeyId=KMS_ID,
         Overwrite=True,
     )
 
