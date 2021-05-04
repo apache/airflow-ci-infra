@@ -112,9 +112,10 @@ def sync_committers(_):
     app.log.info("Parsing committers list from %s", GITHUB_CI_YML)
     resp = requests.get(GITHUB_CI_YML)
     resp.raise_for_status()
+
     ci_yml = yaml.load(resp.text, yaml.SafeLoader)
     runs_on = ci_yml['jobs']['build-info']['runs-on'].replace("\n", '')
-    committers = re.findall(r"fromJSON\('(\[.*\])'\)", runs_on)[0]
+    committers = json.loads(re.findall(r"fromJSON\('(\[.*\])'\)", runs_on)[0])
 
     client = boto3.client('ssm')
     param_path = get_ssm_param_path(SSM_REPO_NAME)
