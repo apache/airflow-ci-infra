@@ -1,0 +1,24 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "SyncCommitters",
+      "Effect": "Allow",
+      "Action": [
+        "kms:Decrypt",
+        "kms:Encrypt",
+        "kms:GenerateDataKey",
+        "ssm:GetParameter",
+        "ssm:PutParameter",
+        "logs:CreateLogStream",
+        "logs:CreateLogGroup",
+        "logs:PutLogEvents"
+      ],
+      "Resource": [
+        "arn:aws:ssm:*:827901512104:parameter/runners/*/configOverlay",
+        "arn:aws:kms:*:827901512104:key/48a58710-7ac6-4f88-995f-758a6a450faa",
+        "arn:*:logs:*:*:*"
+      ]
+    }
+  ]
+}
