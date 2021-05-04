@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
 # distributed with this work for additional information
@@ -15,14 +16,23 @@
 # specific language governing permissions and limitations
 # under the License.
 
-boto3
-click~=7.1
-chalice
-chalice
-google-cloud-monitoring
-google-cloud-compute
-pytest~=6.0
-python-dynamodb-lock-whatnick~=0.9.3
-psutil
-requests
-tenacity~=6.0
+import click
+from google.cloud import monitoring_v3
+
+DEFAULT_PROJECT = 'apache-airflow-ci-cd'
+DEFAULT_ZONE = 'us-central1-a'
+CUSTOM_METRICS_TYPE = 'custom.googleapis.com/github-actions/jobs-running'
+
+
+@click.command()
+@click.option('--project', default=DEFAULT_PROJECT)
+@click.option('--zone', default=DEFAULT_ZONE)
+def main(project: str, zone: str):
+    client = monitoring_v3.MetricServiceClient()
+    descriptor_name = f"projects/{project}/metricDescriptors/{CUSTOM_METRICS_TYPE}"
+    client.delete_metric_descriptor(name=descriptor_name)
+    print(f"Deleted metric descriptor {descriptor_name}.")
+
+
+if __name__ == '__main__':
+    main()
