@@ -8,10 +8,13 @@
     "prod": {
       "api_gateway_stage": "api",
       "autogen_policy": false,
-      "iam_policy_file": "prod_iam.json",
       "environment_variables": {
         "GH_WEBHOOK_TOKEN_ENCRYPTED": "AQICAHg1MGVq8MAqYXSkkgy6iL19KSI14nJw8DelmHFuRpAfvQEh/mniWicOD0N1aVuHhp+VAAAAfDB6BgkqhkiG9w0BBwagbTBrAgEAMGYGCSqGSIb3DQEHATAeBglghkgBZQMEAS4wEQQMVqkAu70BaR2rDQ4qAgEQgDlIAxDrBlblL6XNKkJIs+zrNEMcGpS68JnoVh2s1oKEzbBXzYS16/9ZrW9CwUV4ULAd2EsGb90iz74=",
         "ACTIONS_SQS_URL": "https://sqs.eu-central-1.amazonaws.com/827901512104/actions-runner-requests"
+      },
+      "lambda_functions": {
+        "index": { "iam_policy_file": "prod/index.json" },
+        "sync_committers": { "iam_policy_file": "prod/sync_committers.json" }
       }
     }
   },
