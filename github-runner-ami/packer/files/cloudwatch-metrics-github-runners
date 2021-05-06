@@ -15,4 +15,4 @@
 # specific language governing permissions and limitations
 # under the License.
 
-*/1 * * * * nobody /usr/local/sbin/actions-runner-ec2-reporting
+*/1 * * * * nobody /usr/local/sbin/actions-runner-ec2-reporting.sh
