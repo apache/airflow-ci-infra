@@ -95,4 +95,4 @@ create_missing_group = false
 create_missing_stream = true
 group_name = "GitHubRunners"
 stream_name = "{{ host }}"
-region = "eu-central-1"
+region = "${AWS_DEFAULT_REGION}"

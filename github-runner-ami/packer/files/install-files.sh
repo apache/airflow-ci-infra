@@ -18,7 +18,7 @@
 
 set -eu -o pipefail
 
-mkdir /etc/iptables/ /etc/vector
+mkdir /etc/iptables/ /etc/vector /etc/systemd/system/vector.service.d
 
 install --owner root --mode=0644 --target-directory "/etc/systemd/system/" "/tmp/etc-systemd-system/"*
 install --owner root --mode=0755 --target-directory "/usr/local/sbin" "/tmp/usr-local-sbin/"*
@@ -27,3 +27,4 @@ install --owner root --mode=0644 --target-directory "/etc/iptables" "/tmp/etc-ip
 install --owner root --mode=0644 --target-directory "/etc/cron.d" "/tmp/etc-cron.d/"*
 install --owner root --mode=0644 --target-directory "/etc/sudoers.d" "/tmp/etc-sudoers.d/"*
 install --owner root --mode=0644 --target-directory "/etc/vector/" "/tmp/etc-vector/"*
+install --owner root --mode=0644 --target-directory "/etc/systemd/system/vector.service.d/" "/tmp/etc-systemd-system-vector.service.d/"*
