@@ -30,6 +30,7 @@ app = Chalice(app_name='scale_out_runner')
 app.log.setLevel(logging.INFO)
 
 ASG_GROUP_NAME = os.getenv('ASG_NAME', 'AshbRunnerASG')
+ASG_REGION_NAME = os.getenv('ASG_REGION_NAME', None)
 TABLE_NAME = os.getenv('COUNTER_TABLE', 'GithubRunnerQueue')
 _commiters = set()
 GH_WEBHOOK_TOKEN = None
@@ -177,7 +178,7 @@ def increment_dynamodb_counter(delta: int = 1) -> int:
 
 
 def scale_asg_if_needed(num_queued_jobs: int) -> dict:
-    asg = boto3.client('autoscaling')
+    asg = boto3.client('autoscaling', region_name=ASG_REGION_NAME)
 
     resp = asg.describe_auto_scaling_groups(
         AutoScalingGroupNames=[ASG_GROUP_NAME],
