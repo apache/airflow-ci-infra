@@ -139,6 +139,7 @@ build {
       "./files/install-dependencies.sh",
       "./files/docker-compose.sh",
       "./files/runner_bootstrap.sh",
+      "./files/cleanup.sh",
     ]
     execute_command = "chmod +x '{{ .Path }}'; sudo sh -c '{{ .Vars }} {{ .Path }}'"
     environment_vars = [
