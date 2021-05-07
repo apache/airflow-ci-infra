@@ -89,7 +89,7 @@ build {
   # in to place with the approriate permissions via install-files.sh provisioner step
   provisioner "shell" {
     inline = [
-      "mkdir -p /tmp/etc-systemd-system /tmp/usr-local-sbin /tmp/usr-local-bin /tmp/etc-sudoers.d /tmp/etc-iptables /tmp/etc-cron.d /tmp/etc-vector"
+      "mkdir -p /tmp/etc-systemd-system /tmp/usr-local-sbin /tmp/usr-local-bin /tmp/etc-sudoers.d /tmp/etc-iptables /tmp/etc-cron.d /tmp/etc-vector /tmp/etc-systemd-system-vector.service.d"
     ]
   }
   provisioner "file" {
@@ -135,6 +135,10 @@ build {
   provisioner "file" {
     destination = "/tmp/etc-vector/vector.toml"
     source      = "./files/vector.toml"
+  }
+  provisioner "file" {
+    destination = "/tmp/etc-systemd-system-vector.service.d/override.conf"
+    source      = "./files/vector.service.d.override.conf"
   }
   provisioner "shell" {
     scripts = [
