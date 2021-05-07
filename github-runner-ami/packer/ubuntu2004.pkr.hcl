@@ -21,11 +21,8 @@ variable "vpc_id" {
 variable "ami_name" {
   type = string
 }
-variable "aws_region" {
-  type = string
-}
-variable "subnet_id" {
-  type = string
+variable "aws_regions" {
+  type = list(string)
 }
 variable "packer_role_arn" {
   type = string
@@ -44,12 +41,16 @@ source "amazon-ebs" "runner_builder" {
   }
   #access_key = ""
   #secret_key = ""
-  region = var.aws_region
+  region = var.aws_regions[0]
   ami_name = "${var.ami_name}-${var.runner_version}"
-  ami_regions = [var.aws_region]
+  ami_regions = var.aws_regions
   tag {
-    key                 = "ami"
-    value               = "github-runner-ami"
+    key   = "Name"
+    value = "github-runner-ami"
+  }
+  snapshot_tag {
+    key   = "Name"
+    value = "github-runner-ami-root"
   }
   encrypt_boot = false
   instance_type = "t3.micro"
@@ -57,7 +58,10 @@ source "amazon-ebs" "runner_builder" {
   ssh_username = "ubuntu"
   ssh_interface = "session_manager"
   iam_instance_profile = var.session_manager_instance_profile_name
-  subnet_id = var.subnet_id
+  subnet_filter {
+    #  Just pick a random subnet in the VPC -- we only have the three defaults so this is fine!
+    random = true
+  }
   vpc_id = var.vpc_id
   source_ami_filter {
     filters = {
