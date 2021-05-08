@@ -145,6 +145,7 @@ build {
       "./files/install-files.sh",
       "./files/source-list-additions.sh",
       "./files/install-dependencies.sh",
+      "./files/install-nodejs.sh",
       "./files/docker-compose.sh",
       "./files/runner_bootstrap.sh",
       "./files/cleanup.sh",
