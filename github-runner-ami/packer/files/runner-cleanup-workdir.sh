@@ -16,9 +16,15 @@
 # specific language governing permissions and limitations
 # under the License.
 
+set -eu -o pipefail
 echo "Left-over containers:"
 docker ps -a
 docker ps -qa | xargs --verbose --no-run-if-empty docker rm -fv
+
+echo "Log in to a paid docker user to get unlimited docker pulls"
+aws ssm get-parameter --with-decryption --name /runners/apache/airflow/dockerPassword | \
+    jq .Parameter.Value -r | \
+    sudo -u runner docker login --username airflowcirunners --password-stdin
 
 if [[ -d ~runner/actions-runner/_work/airflow/airflow ]]; then
     cd ~runner/actions-runner/_work/airflow/airflow
