@@ -136,10 +136,6 @@ build {
     destination = "/tmp/etc-vector/vector.toml"
     source      = "./files/vector.toml"
   }
-  provisioner "file" {
-    destination = "/tmp/etc-systemd-system-vector.service.d/override.conf"
-    source      = "./files/vector.service.d.override.conf"
-  }
   provisioner "shell" {
     scripts = [
       "./files/install-files.sh",
