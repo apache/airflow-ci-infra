@@ -31,13 +31,17 @@ if pgrep --ns $MAINPID -a Runner.Worker > /dev/null; then
     # Job running -- just wait for it to exit
     sleep 10
   done
+
+else
+  # If there were _no_ Workers running, ask the main process to stop. If there
+  # were Workers running, then Runner.Listener would stop automatically because
+  # of the `--once`
+  pkill --ns $MAINPID Runner.Listener || true
 fi
 
-# Request shutdown if it's still alive -- because we are in "stop" state it should not restart
-if pkill --ns $MAINPID Runner.Listener; then
   # Wait for it to shut down
-  echo "Waiting for main Runner.Listener process to stop"
-  while pgrep --ns $MAINPID -a Runner.Listener; do
-    sleep 5
-  done
+echo "Waiting for main Runner.Listener process to stop"
+while pgrep --ns $MAINPID -a Runner.Listener; do
+  sleep 5
+done
 fi
