@@ -40,8 +40,7 @@ else
 fi
 
   # Wait for it to shut down
-echo "Waiting for main Runner.Listener process to stop"
+echo "Waiting for main Runner.Listener $MAINPID process to stop"
 while pgrep --ns $MAINPID -a Runner.Listener; do
   sleep 5
 done
-fi
