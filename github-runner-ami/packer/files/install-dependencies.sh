@@ -39,8 +39,11 @@ apt-get install -yq --no-install-recommends -o Dpkg::Options::="--force-confold"
             python3-venv \
             python3-wheel \
             yarn \
-            vector
+            vector='0.15.*'
 
 
 # Re-enabled in clout-init once AWS_DEFAULT_REGION env var is set
 systemctl disable vector
+
+# validate the vector config file we have already installed
+sudo -u vector vector validate --no-environment
