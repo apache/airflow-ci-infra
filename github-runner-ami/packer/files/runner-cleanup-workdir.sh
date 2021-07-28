@@ -39,3 +39,6 @@ if [[ -d ~runner/actions-runner/_work/airflow/airflow ]]; then
         "
     fi
 fi
+
+# Remove left over mssql data dirs
+find . -maxdepth 1 -name 'tmp-mssql-volume-*' -type d -printf 'Deleting %f\n' -exec sudo rm -r {} +
