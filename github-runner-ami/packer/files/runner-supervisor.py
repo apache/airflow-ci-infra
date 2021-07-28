@@ -554,21 +554,29 @@ class ProcessWatcher:
         listener_found = False
 
         for proc in psutil.process_iter(['name', 'cmdline']):
-            if proc.name() == "Runner.Worker" and proc.pid not in self.interesting_processes:
-                log.info(
-                    "Found existing interesting processes, protecting from scale in %d: %s",
-                    proc.pid,
-                    proc.cmdline(),
-                )
-                self.interesting_processes[proc.pid] = proc
-                self.protect_from_scale_in(protect=True)
-                self.dynamodb_atomic_decrement()
-            if proc.name() == "Runner.Listener":
-                listener_found = True
+            try:
+                if proc.name() == "Runner.Worker" and proc.pid not in self.interesting_processes:
+                    log.info(
+                        "Found existing interesting processes, protecting from scale in %d: %s",
+                        proc.pid,
+                        proc.cmdline(),
+                    )
+                    self.interesting_processes[proc.pid] = proc
+                    self.protect_from_scale_in(protect=True)
+                    self.dynamodb_atomic_decrement()
+                if proc.name() == "Runner.Listener":
+                    listener_found = True
+            except psutil.NoSuchProcess:
+                # Process went away before we could
+                pass
 
-        if self.in_termating_lifecycle and not listener_found:
-            log.info("Runner.Listener process not found - OkayToTerminate instance")
-            complete_asg_lifecycle_hook('OkayToTerminate')
+        if not listener_found:
+            if self.in_termating_lifecycle:
+                log.info("Runner.Listener process not found - OkayToTerminate instance")
+                complete_asg_lifecycle_hook('OkayToTerminate')
+            else:
+                # Unprotect ourselves if somehow the runner is no longer working
+                self.protect_from_scale_in(protect=False)
 
     def check_still_alive(self):
         # Check ASG status
@@ -697,7 +705,7 @@ class ProcessWatcher:
                 try:
                     proc = psutil.Process(detail.pid)
                     if proc.name() == "Runner.Listener":
-                        log.info("Runner.Listener process exited - OkayToTerminate instance")
+                        log.info("Runner.Listener process %d exited - OkayToTerminate instance", detail.pid)
                         complete_asg_lifecycle_hook('OkayToTerminate')
                 except psutil.NoSuchProcess:
                     # We lost the race, process has already exited. If it was that short lived it wasn't that
