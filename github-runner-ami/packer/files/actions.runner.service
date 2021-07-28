@@ -31,7 +31,7 @@ User=runner
 WorkingDirectory=/home/runner/actions-runner
 KillMode=mixed
 KillSignal=SIGTERM
-TimeoutStopSec=5min
+TimeoutStopSec=30min
 Restart=on-success
 
 [Install]
