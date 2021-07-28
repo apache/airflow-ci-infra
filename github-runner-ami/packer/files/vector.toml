@@ -59,8 +59,7 @@ data_dir = "/var/lib/vector"
 [transforms.filter-runner-logs]
   type = "filter"
   inputs = ['grok-runner-logs']
-  condition.type = "remap"
-  condition.source = '''
+  condition = '''
     if .logger == "JobServerQueue" {
       !match!(.message, r'Try to append \d+ batches web console lines for record')
     } else if .logger == "HostContext" {
