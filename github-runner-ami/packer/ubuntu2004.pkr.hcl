@@ -35,10 +35,6 @@ variable "session_manager_instance_profile_name" {
 }
 
 source "amazon-ebs" "runner_builder" {
-//  assume_role {
-//    role_arn     = var.packer_role_arn
-//    session_name = var.runner_version
-//  }
   #access_key = ""
   #secret_key = ""
   region = var.aws_regions[0]
