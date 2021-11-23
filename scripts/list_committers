@@ -30,10 +30,11 @@ def main(github_token):
     committer_usernames = sorted(f'"{c.login}"' for c in committers.get_members())
 
     click.echo("Take the below list and:")
+    click.echo(" - update the `/runners/apache/airflow/configOverlay` parameter in AWS SSM ParameterStore")
+    click.echo(" - restart the self-hosted runners")
     click.echo(
-        " - replace the list of commiters in the `build-info` job in apache/airflow's `.github/workflows/ci.yml`"
+        " - finally, replace the list of commiters in the `build-info` job in apache/airflow's `.github/workflows/ci.yml`\n"
     )
-    click.echo(" - update the `/runners/apache/airflow/configOverlay` parameter in AWS SSM ParameterStore\n")
     click.echo(',\n'.join(committer_usernames))
 
 
