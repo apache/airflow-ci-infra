@@ -43,3 +43,5 @@ override.tf.json
 session-manager-plugin.*
 
 # End of https://www.toptal.com/developers/gitignore/api/terraform
+github-runner-ami/packer/session-manager-plugin.deb
+github-runner-ami/packer/session-manager-plugin.rpm
