@@ -25,6 +25,7 @@ fi
 # Hard-code docker buildx version
 buildx_version="v0.7.1"
 buildx_binary="buildx-${buildx_version}.$(uname -s)-${architecture}"
-plugins_dir="${HOME}/.docker/cli-plugins"
+plugins_dir="/home/runner/.docker/cli-plugins"
 mkdir -pv "${plugins_dir}"
 curl -L "https://github.com/docker/buildx/releases/download/${buildx_version}/${buildx_binary}" -o "${plugins_dir}/${buildx_binary}"
+chown -R runner:runner "${plugins_dir}"
