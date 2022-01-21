@@ -1,5 +1,5 @@
 #cloud-config
-# 2021-05-17 09:21+01:00
+# 2022-01-21 19:31 BMT
 
 mounts:
   - [tmpfs, /tmp, tmpfs, "defaults,noatime,size=10%"]
@@ -15,5 +15,6 @@ runcmd:
       set -eu -o pipefail
       echo "AWS_DEFAULT_REGION=$(cloud-init query region)" >> /etc/environment
       echo "AWS_DEFAULT_REGION=$(cloud-init query region)" >> /etc/default/vector
-      systemctl enable --now vector
+      #aws logs create-log-stream --log-group-name GitHubRunners --log-stream-name $(hostname) || true
+      #systemctl enable --now vector
       systemctl enable --now actions.runner

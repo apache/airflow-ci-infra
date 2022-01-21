@@ -31,8 +31,8 @@ data_dir = "/var/lib/vector"
   fields = ["_CAP_EFFECTIVE", "_SYSTEMD_SLICE", "_SYSTEMD_CGROUP",
     "_SYSTEMD_INVOCATION_ID", "_SELINUX_CONTEXT", "_COMM", "_BOOT_ID",
     "_MACHINE_ID", "_STREAM_ID", "_PID", "_GID", "_UID","_TRANSPORT",
-    "__MONOTONIC_TIMESTAMP", "SYSLOG_IDENTIFIER", "PRIORITY",
-    "source_type"]
+    "__MONOTONIC_TIMESTAMP", "SYSLOG_IDENTIFIER", "SYSLOG_TIMESTAMP",
+    "PRIORITY", "_EXE", "source_type"]
 
 [sources.runner-logs]
   type = "file"
@@ -64,6 +64,9 @@ data_dir = "/var/lib/vector"
       !match!(.message, r'Try to append \d+ batches web console lines for record')
     } else if .logger == "HostContext" {
       !starts_with!(.message, "Well known directory")
+    } else if .logger == "JobDispatcher" {
+      !starts_with!(.message, "Successfully renew job request")
+    }
     } else {
       true
     }
@@ -76,12 +79,17 @@ data_dir = "/var/lib/vector"
 [transforms.grok-job-logs]
   type = "remap"
   inputs = ["job-logs"]
+  drop_on_abort = true
   source = '''
     structured, err = parse_grok(.message, "%{TIMESTAMP_ISO8601:timestamp} %{GREEDYDATA:message}")
 
     if err == null {
       . = merge(., structured)
       .type = "job-output"
+
+      if length(.message) == 0 ?? true {
+        abort # Don't send empty messages to cloud watch!
+      }
     }
   '''
 
