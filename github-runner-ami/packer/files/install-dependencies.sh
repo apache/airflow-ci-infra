@@ -32,6 +32,7 @@ apt-get install -yq --no-install-recommends -o Dpkg::Options::="--force-confold"
             build-essential \
             docker.io \
             git \
+            haveged \
             iptables-persistent \
             jq \
             parallel \
