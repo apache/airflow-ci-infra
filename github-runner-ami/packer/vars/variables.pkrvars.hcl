@@ -19,5 +19,5 @@ vpc_id = "vpc-d73487bd"
 ami_name = "airflow-runner-ami"
 aws_regions = ["eu-central-1", "us-east-2"]
 packer_role_arn = "arn:aws:iam::827901512104:role/packer-role"
-runner_version = "2.287.1-airflow2"
+runner_version = "2.288.1-airflow1"
 session_manager_instance_profile_name = "packer_ssm_instance_profile"
