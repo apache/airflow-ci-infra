@@ -30,6 +30,8 @@ sudo -u runner mkdir -pv "${plugins_dir}"
 sudo -u runner curl -L "https://github.com/docker/buildx/releases/download/${buildx_version}/${buildx_binary}" -o "${plugins_dir}/docker-buildx"
 sudo -u runner chmod a+x "${plugins_dir}/docker-buildx"
 
+apt install -y qemu qemu-user-static
+
 # make sure multi-platform support is added for self-hosted runners
 # See; https://docs.docker.com/buildx/working-with-buildx/#build-multi-platform-images
 sudo docker run --privileged --rm tonistiigi/binfmt --install all
