@@ -30,8 +30,71 @@ sudo -u runner mkdir -pv "${plugins_dir}"
 sudo -u runner curl -L "https://github.com/docker/buildx/releases/download/${buildx_version}/${buildx_binary}" -o "${plugins_dir}/docker-buildx"
 sudo -u runner chmod a+x "${plugins_dir}/docker-buildx"
 
-apt install -y qemu qemu-user-static
 
-# make sure multi-platform support is added for self-hosted runners
-# See; https://docs.docker.com/buildx/working-with-buildx/#build-multi-platform-images
-sudo docker run --privileged --rm tonistiigi/binfmt --install all
+## Support for multi-platform builds
+## See; https://docs.docker.com/buildx/working-with-buildx/#build-multi-platform-images
+## We do not need installing qemu support for public runners as we are currently starting ARM instances to
+## build the images for ARM
+# apt install -y qemu qemu-user-static
+# sudo docker run --privileged --rm tonistiigi/binfmt --install all
+
+
+## Alternatively support builds with ARM instance launched on demand
+# Needed Launch arm instances and make the docker engine available via forwarded SSH connection
+apt-get install -y autossh
+# The runner role has to have the following policies enabled:
+# RunInstancesPolicy:
+#{
+#    "Version": "2012-10-17",
+#     "Statement": [
+#        {
+#            "Sid": "VisualEditor0",
+#            "Effect": "Allow",
+#            "Action": [
+#                "ec2:AuthorizeSecurityGroupIngress",
+#                "ec2:TerminateInstances",
+#                "ec2:CreateTags",
+#                "ec2:RunInstances",
+#                "ec2:RevokeSecurityGroupIngress"
+#            ],
+#            "Resource": [
+#                "arn:aws:ec2:us-east-2:827901512104:subnet/*",
+#                "arn:aws:ec2:us-east-2:827901512104:instance/*",
+#                "arn:aws:ec2:us-east-2:827901512104:security-group/*",
+#                "arn:aws:ec2:us-east-2:827901512104:network-interface/*",
+#                "arn:aws:ec2:us-east-2:827901512104:volume/*",
+#                "arn:aws:ec2:us-east-2::image/*"
+#            ]
+#        },
+#        {
+#            "Sid": "VisualEditor1",
+#            "Effect": "Allow",
+#            "Action": [
+#                "ec2:DescribeInstances",
+#                "ec2:DescribeInstanceStatus"
+#            ],
+#            "Resource": "*"
+#        }
+#    ]
+#}
+#
+# InstanceConnectPolicy:
+# {
+#    "Version": "2012-10-17",
+#    "Statement": [
+#        {
+#            "Effect": "Allow",
+#            "Action": [
+#                "ec2-instance-connect:SendSSHPublicKey"
+#            ],
+#            "Resource": [
+#                "arn:aws:ec2:us-east-2:827901512104:instance/*"
+#            ],
+#            "Condition": {
+#                "StringEquals": {
+#                    "ec2:osuser": "ec2-user"
+#                }
+#            }
+#        }
+#    ]
+# }
