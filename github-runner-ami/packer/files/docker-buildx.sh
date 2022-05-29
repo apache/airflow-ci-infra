@@ -23,7 +23,7 @@ if [[ ${architecture} == "x86_64" ]] ; then
     architecture="amd64"
 fi
 # Hard-code docker buildx version
-buildx_version="v0.7.1"
+buildx_version="v0.8.2"
 buildx_binary="buildx-${buildx_version}.$(uname -s)-${architecture}"
 plugins_dir="/home/runner/.docker/cli-plugins"
 sudo -u runner mkdir -pv "${plugins_dir}"
