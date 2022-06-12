@@ -17,12 +17,16 @@
 # specific language governing permissions and limitations
 # under the License.
 
-import click
+import rich_click as click
 from github import Github
 
+from rich.console import Console
+console = Console(color_system="standard", width=200)
 
 @click.command(short_help='List committer logins - used to sync list of committers in CI configuration')
-@click.argument('github-token', envvar='GITHUB_TOKEN')
+@click.option('--github-token', envvar='GITHUB_TOKEN',
+              help="You can generate the token with readOrg permissions: "
+                   "https://github.com/settings/tokens/new?description=Read%20Org&scopes=read:org")
 def main(github_token):
     gh = Github(github_token)
     org = gh.get_organization('apache')
@@ -33,7 +37,7 @@ def main(github_token):
     click.echo(" - update the `/runners/apache/airflow/configOverlay` parameter in AWS SSM ParameterStore")
     click.echo(" - restart the self-hosted runners")
     click.echo(
-        " - finally, replace the list of commiters in the `build-info` job in apache/airflow's `.github/workflows/ci.yml`\n"
+        " - finally, replace the list of committers in the `build-info` job in apache/airflow's `.github/workflows/ci.yml`\n"
     )
     click.echo(',\n'.join(committer_usernames))
 
