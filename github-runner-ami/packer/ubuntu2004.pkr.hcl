@@ -38,7 +38,7 @@ source "amazon-ebs" "runner_builder" {
   #access_key = ""
   #secret_key = ""
   region = var.aws_regions[0]
-  ami_name = "${var.ami_name}-${var.runner_version}-v4"
+  ami_name = "${var.ami_name}-${var.runner_version}-v6"
   ami_regions = var.aws_regions
   tag {
     key   = "Name"
@@ -143,6 +143,7 @@ build {
       "./files/git.sh",
       "./files/runner_bootstrap.sh",
       "./files/docker-buildx.sh",
+      "./files/regctl.sh",
       "./files/cleanup.sh",
     ]
     execute_command = "chmod +x '{{ .Path }}'; sudo sh -c '{{ .Vars }} {{ .Path }}'"
