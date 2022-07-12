@@ -38,7 +38,7 @@ source "amazon-ebs" "runner_builder" {
   #access_key = ""
   #secret_key = ""
   region = var.aws_regions[0]
-  ami_name = "${var.ami_name}-${var.runner_version}-v6"
+  ami_name = "${var.ami_name}-${var.runner_version}-v7"
   ami_regions = var.aws_regions
   tag {
     key   = "Name"
@@ -142,6 +142,7 @@ build {
       "./files/docker-compose.sh",
       "./files/git.sh",
       "./files/runner_bootstrap.sh",
+      "./files/create-hostedtools-cache.sh",
       "./files/docker-buildx.sh",
       "./files/regctl.sh",
       "./files/cleanup.sh",
