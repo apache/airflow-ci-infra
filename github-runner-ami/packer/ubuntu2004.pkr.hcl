@@ -140,6 +140,7 @@ build {
       "./files/install-nodejs.sh",
       "./files/install-github-cli.sh",
       "./files/docker-compose.sh",
+      "./files/increase_inotify_resources.sh",
       "./files/git.sh",
       "./files/runner_bootstrap.sh",
       "./files/create-hostedtools-cache.sh",
