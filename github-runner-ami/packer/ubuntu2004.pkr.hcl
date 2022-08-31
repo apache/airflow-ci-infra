@@ -38,7 +38,7 @@ source "amazon-ebs" "runner_builder" {
   #access_key = ""
   #secret_key = ""
   region = var.aws_regions[0]
-  ami_name = "${var.ami_name}-${var.runner_version}-v8"
+  ami_name = "${var.ami_name}-${var.runner_version}-v10"
   ami_regions = var.aws_regions
   tag {
     key   = "Name"
@@ -67,6 +67,12 @@ source "amazon-ebs" "runner_builder" {
     }
     owners = ["099720109477"]
     most_recent = true
+  }
+  launch_block_device_mappings {
+    device_name = "/dev/sda1"
+    volume_size = 16
+    volume_type = "gp3"
+    delete_on_termination = true
   }
 }
 
