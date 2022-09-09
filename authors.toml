@@ -1,0 +1,56 @@
+# For security, CI jobs triggered by a GitHub pull request should only run on
+# Airflow infra when they are from a user that is in this list.
+# 
+# This list consists of the airflow committers and other known, trusted
+# authors. Currently maintained by hand; and the AWS SSM parameter is still
+# the source of truth, so changes here must also be replicated there.
+
+[core]
+BasPH = ""
+Fokko = ""
+KevinYang21 = ""
+XD-DENG = "Xiaodong DENG"
+aijamalnk= "Aizhamal Nurmamat kyzy"
+alexvanboxel = ""
+aoen = ""
+artwr = ""
+ashb = ""
+bbovenzi = ""
+bolkedebruin = ""
+criccomini = ""
+dimberman = ""
+dstandish = "Daniel Standish"
+eladkal = ""
+ephraimbuddy = ""
+feluelle = "Felix Uellendall"
+feng-tao = ""
+houqp = ""
+jedcunningham = "Jed Cunningham"
+jgao54 = "Joy Gao"
+jghoman = ""
+jhtimmins = ""
+jmcarp = ""
+josh-fell = "Josh Fell"
+kaxil = "Kaxil Naik"
+leahecole = ""
+malthe = ""
+mik-laj = "Kamil Breguła"
+milton0825 = ""
+mistercrunch = ""
+msumit = ""
+pingzh = "Ping Zhang"
+potiuk = ""
+r39132 = ""
+ryanahamilton = ""
+ryw = ""
+saguziel = ""
+sekikn = ""
+turbaszek = "Tomek Urbaszek"
+uranusjr = ""
+vikramkoka = "Vikram Koka"
+xinbinhuang = "Xinbin Huang"
+yuqian90 = ""
+zhongjiajie = "Jiajie Zhong"
+
+[pleb]
+norm = "Mark Norman Francis"
