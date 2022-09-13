@@ -18,6 +18,7 @@
 # under the License.
 
 import boto3
+import json
 import toml
 
 
@@ -28,10 +29,18 @@ author_set = set()
 for membership in author_list:
     author_set.update([author for author in author_list[membership]])
 
+
 ssm_client = boto3.client("ssm")
+param = ssm_client.get_parameter(
+    Name="/runners/apache/airflow/configOverlay",
+)
+
+config = json.loads(param)
+config["pullRequestSecurity"]["allowedAuthors"] = author_set
+
 ssm_client.put_parameter(
     Name="/runners/apache/airflow/configOverlay",
-    Value=list(author_set),
-    Type="StringList",
+    Value=json.dumps(config),
+    Type="String",
     Overwrite=True,
 )
