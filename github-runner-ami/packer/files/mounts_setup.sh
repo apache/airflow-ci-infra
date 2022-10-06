@@ -16,5 +16,5 @@
 # under the License.
 
 sudo mount -t tmpfs -o size=8% tmpfs /tmp
-sudo mount -t tmpfs -o size=60% tmpfs /var/lib/docker
+sudo mount -t tmpfs -o size=75% tmpfs /var/lib/docker
 sudo mount -t tmpfs -o tmpfs /home/runner/actions-runner/_work
