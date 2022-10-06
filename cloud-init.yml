@@ -2,8 +2,7 @@
 # 2022-01-21 19:31 BMT
 
 mounts:
-  - [tmpfs, /tmp, tmpfs, "defaults,noatime,size=10%"]
-  - [tmpfs, /var/lib/docker, tmpfs, "defaults,noatime,size=66%"]
+  - [tmpfs, /var/lib/docker, tmpfs, "defaults,noatime,size=85%"]
   - [tmpfs, /home/runner/actions-runner/_work, tmpfs, "defaults,noatime"]
 
 
