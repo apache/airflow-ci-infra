@@ -38,7 +38,7 @@ source "amazon-ebs" "runner_builder" {
   #access_key = ""
   #secret_key = ""
   region = var.aws_regions[0]
-  ami_name = "${var.ami_name}-${var.runner_version}-v13"
+  ami_name = "${var.ami_name}-${var.runner_version}-v14"
   ami_regions = var.aws_regions
   tag {
     key   = "Name"
@@ -146,7 +146,7 @@ build {
       "./files/install-nodejs.sh",
       "./files/install-github-cli.sh",
       "./files/docker-compose.sh",
-      "./files/increase_inotify_resources.sh",
+      "./files/configure_kernel.sh",
       "./files/git.sh",
       "./files/runner_bootstrap.sh",
       "./files/create-hostedtools-cache.sh",

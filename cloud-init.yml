@@ -17,3 +17,4 @@ runcmd:
       #aws logs create-log-stream --log-group-name GitHubRunners --log-stream-name $(hostname) || true
       #systemctl enable --now vector
       systemctl enable --now actions.runner
+      sysctl -w net.netfilter.nf_conntrack_tcp_be_liberal=1

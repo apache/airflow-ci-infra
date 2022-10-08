@@ -18,4 +18,5 @@
 cat >>/etc/sysctl.conf <<EOF
 fs.inotify.max_user_watches = 524288
 fs.inotify.max_user_instances = 512
+net.netfilter.nf_conntrack_tcp_be_liberal = 1
 EOF
