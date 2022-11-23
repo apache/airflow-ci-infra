@@ -19,4 +19,4 @@
 
 set -uo pipefail
 
-apt install subversion
+apt install subversion -y
