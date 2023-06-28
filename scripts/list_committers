@@ -40,6 +40,56 @@ def main(github_token):
         " - Inform the new committer, that it's time to open PR to update list of committers in dev/breeze/src/airflow_breeze/global_constants.py (COMMITTERS variable)"
     )
     click.echo(',\n'.join(committer_usernames))
+    click.echo("""
+
+Add the following explanation:
+
+As a new committer, adding yourself to committer list gives you automated
+acccess to our self-hosted runners for your PRs.  Once you merge the changes,
+all your PRs by default will run using our self-hosted infrastructure, that is
+sponsored currently by AWS and Astronomer and involves running the builds on
+AWS spot instances that are started on-demand.
+
+Those instances are way bigger than the Public Runners available for all ASF
+projects. They have 8 cores and 64 GB memory and all the builds happen
+in-memory, and our builds are optimized to use parallelism and memory so that
+often what you will get is 3-4 times speed-up vs the Public instances. 
+
+We currently have up to 35 such instances running at a time, so there is a
+possibility - if there are many committers pushing their changes in a short
+time that they will get into a queue so it's not always faster to get the
+feedback. Currently ASF has plenty (900) public runners, so the delays we
+experienced in the past for Public Runners is a distant pass so they should run
+relatively quickly as well, but this might change depending on other projects,
+because the runners are shared between all ASF projects.
+
+At any of your PRs you can apply the label "use public runners" before
+triggering the build and your build will switch to using Public Runners.
+
+Most PRs are "selective" - they will only run a subset of tests - the subeset
+is calculated by "Selective checks" job (you can open the job output and find
+out in details how the decisions are made - we have a simple rule engine that
+determines the set of tests to run. You can apply "full tests needed" label to
+PR before it starts - this way a complete set of tests will be executed -
+including all Python and DB versions.
+
+As a committer, you can also apply the labels to other's PRs and retrigger the
+build if you are in doubt if the selective checks decision was good-enough
+(looking at the content of the PR).
+
+We also have "canary" builds that run a complete set of tests in "main". They
+are run every night and after merging PRs to main. Usually 3-5 canary builds
+complete during the day when there are a number of PRs merged - we cancel
+running build when new PR gets merged before canary build succeeds and we start
+a new one (saves a lot of build time). The canary builds are designed to signal
+that some problems passed through the net and need to be fixed in order to turn
+"main" into "green" so watch out for those - we sometimes revert culprit PRs or
+simply implement fix PRs to do so. If you merged a PR and "canary" build failed,
+you should receieve notification about it (but it could be one of the previous
+commits that is the root cause so you need to verify that when diagnosing it
+by looking at past builds and other PRs.
+
+"""
 
 
 if __name__ == "__main__":
