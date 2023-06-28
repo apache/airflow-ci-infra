@@ -21,5 +21,6 @@ chalice
 pytest~=6.0
 python-dynamodb-lock-whatnick~=0.9.3
 psutil
+rich-click
 requests
 tenacity~=6.0
