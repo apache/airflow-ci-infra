@@ -19,7 +19,7 @@ boto3
 click~=7.1
 chalice
 pytest~=6.0
-python-dynamodb-lock-whatnick=~0.9.3
+python-dynamodb-lock-whatnick~=0.9.3
 psutil
 requests
 tenacity~=6.0
