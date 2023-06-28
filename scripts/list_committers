@@ -37,7 +37,7 @@ def main(github_token):
     click.echo(" - update the `/runners/apache/airflow/configOverlay` parameter in AWS SSM ParameterStore")
     click.echo(" - restart the self-hosted runners")
     click.echo(
-        " - finally, replace the list of committers in the `build-info` job in apache/airflow's `.github/workflows/ci.yml`\n"
+        " - Inform the new committer, that it's time to open PR to update list of committers in dev/breeze/src/airflow_breeze/global_constants.py (COMMITTERS variable)"
     )
     click.echo(',\n'.join(committer_usernames))
 
