@@ -1,0 +1,17 @@
+---
+repositories:
+  - name: jetstack
+    url: https://charts.jetstack.io
+
+releases:
+  - name: cluster-config
+    chart: ./cluster-config
+    namespace: kube-system
+
+  # https://cert-manager.io/docs/installation/helm/
+  - name: cert-manager
+    chart: jetstack/cert-manager
+    namespace: infra
+    version: v1.12.2
+    values:
+      - ./values/cert-manager.yaml
