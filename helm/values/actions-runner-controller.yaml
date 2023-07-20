@@ -1,0 +1,10 @@
+replicaCount: 1
+
+labels:
+  type: ci
+  app: actions-runner-controller
+
+syncPeriod: 1m
+
+nodeSelector:
+  node-type: default
