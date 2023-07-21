@@ -11,3 +11,8 @@ rbac:
     name: "cluster-autoscaler"
     annotations:
       eks.amazonaws.com/role-arn: arn:aws:iam::827901512104:role/eks-autoscaler-role
+
+extraArgs:
+  scan-interval: 10s
+  scale-down-delay-after-add: 5m
+  scale-down-unneeded-time: 5m
