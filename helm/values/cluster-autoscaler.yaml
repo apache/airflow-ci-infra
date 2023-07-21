@@ -1,0 +1,13 @@
+cloudProvider: aws
+awsRegion: us-east-2
+
+autoDiscovery:
+  clusterName: "airflow"
+
+rbac:
+  create: true
+  serviceAccount:
+    create: true
+    name: "cluster-autoscaler"
+    annotations:
+      eks.amazonaws.com/role-arn: arn:aws:iam::827901512104:role/eks-autoscaler-role
