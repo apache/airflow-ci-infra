@@ -28,8 +28,8 @@ module "eks" {
   cluster_name    = local.cluster_name
   cluster_version = "1.27"
 
-  vpc_id                         = module.vpc.vpc_id
-  subnet_ids                     = module.vpc.private_subnets
+  vpc_id     = module.vpc.vpc_id
+  subnet_ids = module.vpc.private_subnets
 
   cluster_endpoint_public_access = true
 
@@ -44,10 +44,10 @@ module "eks" {
 
       instance_types = ["t4g.small"]
 
-      min_size     = 1
-      max_size     = 3
+      min_size = 1
+      max_size = 3
 
-      capacity_type  = "SPOT"
+      capacity_type = "SPOT"
 
       labels = {
         "node-type" = "default"
@@ -63,11 +63,11 @@ module "eks" {
       max_size     = 3
       desired_size = 0
 
-      capacity_type  = "SPOT"
+      capacity_type = "SPOT"
 
       labels = {
         "node-type" = "gha-runners"
-        "size" = "small"
+        "size"      = "small"
       }
 
       taints = [
@@ -88,11 +88,11 @@ module "eks" {
       max_size     = 3
       desired_size = 0
 
-      capacity_type  = "SPOT"
+      capacity_type = "SPOT"
 
       labels = {
         "node-type" = "gha-runners"
-        "size" = "medium"
+        "size"      = "medium"
       }
 
       taints = [
