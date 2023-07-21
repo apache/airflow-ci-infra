@@ -1,0 +1,36 @@
+apiVersion: actions.summerwind.dev/v1alpha1
+kind: RunnerDeployment
+metadata:
+  name: medium-runners-deployment
+spec:
+  template:
+    spec:
+      repository: hussein-awala/airflow
+      nodeSelector:
+        node-type: gha-runners
+        size: medium
+      tolerations:
+        - key: node-type
+          operator: Equal
+          value: gha-runners
+          effect: NoSchedule
+      labels:
+        - size:medium
+---
+apiVersion: actions.summerwind.dev/v1alpha1
+kind: HorizontalRunnerAutoscaler
+metadata:
+  name: medium-runners-deployment-autoscaler
+spec:
+  scaleDownDelaySecondsAfterScaleOut: 300
+  scaleTargetRef:
+    kind: RunnerDeployment
+    name: medium-runners-deployment
+  minReplicas: 0
+  maxReplicas: 5
+  metrics:
+    - type: PercentageRunnersBusy
+      scaleUpThreshold: '0.75'
+      scaleDownThreshold: '0.25'
+      scaleUpFactor: '2'
+      scaleDownFactor: '0.5'

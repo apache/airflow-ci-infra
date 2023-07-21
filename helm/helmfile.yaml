@@ -34,3 +34,7 @@ releases:
     version: 0.23.3
     values:
       - ./values/actions-runner-controller.yaml
+
+  - name: runners-config
+    chart: ./runners-config
+    namespace: ci
