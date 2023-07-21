@@ -1,5 +1,6 @@
 {{ $values := .Values }}
 {{ range $runner := $values.runners }}
+---
 apiVersion: actions.summerwind.dev/v1alpha1
 kind: RunnerDeployment
 metadata:
