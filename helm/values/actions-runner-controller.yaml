@@ -4,7 +4,7 @@ labels:
   type: ci
   app: actions-runner-controller
 
-syncPeriod: 1m
+syncPeriod: 10s
 
 nodeSelector:
   node-type: default
