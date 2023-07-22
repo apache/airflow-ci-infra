@@ -29,18 +29,8 @@ Requirements
 In order to deploy the infrastructure, you need to have the following tools installed:
 
 - `tfenv <https://github.com/tfutils/tfenv>`_ to manage Terraform versions
-- `AWS CLI <https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html>`_ to configure the AWS credentials
+- Configure your AWS and EKS credentials :ref:`doc <aws_configuration>`
 
-Configure AWS credentials
-~~~~~~~~~~~~~~~~~~~~~~~~~
-
-To play with the terraform stack, you need to configure the AWS credentials. You need to create access & secret keys for your user, then create a profile in the AWS CLI configuration file.
-
-.. code-block:: bash
-
-   aws configure --profile airflow
-
-You will be asked to provide the access and secret keys, the region, and the output format. For the region, you should choose `us-east-2`.
 
 Configure Terraform
 ~~~~~~~~~~~~~~~~~~~
