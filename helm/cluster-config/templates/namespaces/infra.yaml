@@ -20,7 +20,6 @@
 ################################################################################
 # infra namespace where we create the infrastructure resources
 ################################################################################
-
 apiVersion: v1
 kind: Namespace
 metadata:

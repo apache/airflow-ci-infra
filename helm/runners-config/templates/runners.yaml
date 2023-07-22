@@ -20,7 +20,6 @@
 ################################################################################
 # Airflow GitHub Actions Runner Deployments and HRAutoscaler
 ################################################################################
-
 {{ $values := .Values }}
 {{ range $runner := $values.runners }}
 ---
