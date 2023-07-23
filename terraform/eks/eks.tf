@@ -34,7 +34,10 @@ module "eks" {
   cluster_endpoint_public_access = true
 
   eks_managed_node_group_defaults = {
-    ami_type = "AL2_ARM_64"
+    ami_type                   = "AL2_ARM_64"
+    use_custom_launch_template = false
+    disk_size                  = 50
+    desired_size               = 0
   }
 
   eks_managed_node_groups = {
@@ -42,10 +45,11 @@ module "eks" {
     default_nodes = {
       name = "default"
 
-      instance_types = ["t4g.small"]
+      instance_types = ["t4g.medium"]
 
-      min_size = 1
-      max_size = 3
+      min_size     = 0
+      max_size     = 5
+      desired_size = 1
 
       capacity_type = "SPOT"
 
@@ -57,13 +61,14 @@ module "eks" {
     GHA_runners_small = {
       name = "gha-runners-small"
 
-      instance_types = ["t4g.small"]
+      instance_types = ["t4g.medium"]
 
-      min_size     = 0
-      max_size     = 3
-      desired_size = 0
+      min_size = 0
+      max_size = 30
 
       capacity_type = "SPOT"
+
+      disk_size = 50
 
       labels = {
         "node-type" = "gha-runners"
@@ -82,17 +87,42 @@ module "eks" {
     GHA_runners_medium = {
       name = "gha-runners-medium"
 
-      instance_types = ["t4g.medium"]
+      instance_types = ["t4g.large"]
 
-      min_size     = 0
-      max_size     = 3
-      desired_size = 0
+      min_size = 0
+      max_size = 30
+
+      capacity_type = "SPOT"
+
+      disk_size = 50
+
+      labels = {
+        "node-type" = "gha-runners"
+        "size"      = "medium"
+      }
+
+      taints = [
+        {
+          "key"    = "node-type"
+          "value"  = "gha-runners"
+          "effect" = "NO_SCHEDULE"
+        }
+      ]
+    }
+
+    GHA_runners_large = {
+      name = "gha-runners-large"
+
+      instance_types = ["t4g.2xlarge"]
+
+      min_size = 0
+      max_size = 30
 
       capacity_type = "SPOT"
 
       labels = {
         "node-type" = "gha-runners"
-        "size"      = "medium"
+        "size"      = "large"
       }
 
       taints = [
