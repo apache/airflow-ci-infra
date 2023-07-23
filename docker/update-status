@@ -1,0 +1,71 @@
+#!/usr/bin/env bash
+#
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#  http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+
+set -Eeuo pipefail
+
+if [[ ${1:-} == '' ]]; then
+  # shellcheck source=runner/logger.sh
+  source logger.sh
+  log.error "Missing required argument -- '<phase>'"
+  exit 64
+fi
+
+if [[ ${RUNNER_STATUS_UPDATE_HOOK:-false} == true ]]; then
+
+    apiserver=https://${KUBERNETES_SERVICE_HOST}:${KUBERNETES_SERVICE_PORT_HTTPS}
+    serviceaccount=/var/run/secrets/kubernetes.io/serviceaccount
+    namespace=$(cat ${serviceaccount}/namespace)
+    token=$(cat ${serviceaccount}/token)
+    phase=$1
+    message=${2:-}
+
+    data=$(jq -n --arg phase "$phase" \
+      --arg message "$message" \
+      --arg workflow_repository "${GITHUB_REPOSITORY:-}" \
+      --arg workflow_repository_owner "${GITHUB_REPOSITORY_OWNER:-}" \
+      --arg workflow_name "${GITHUB_WORKFLOW:-}" \
+      --arg workflow_run_id "${GITHUB_RUN_ID:-}" \
+      --arg workflow_run_number "${GITHUB_RUN_NUMBER:-}" \
+      --arg workflow_job "${GITHUB_JOB:-}" \
+      --arg workflow_action "${GITHUB_ACTION:-}" \
+      '
+       .status.phase = $phase
+     | .status.message = $message
+     | .status.workflow.name = $workflow_name
+     | .status.workflow.runID = $workflow_run_id
+     | .status.workflow.runNumber = $workflow_run_number
+     | .status.workflow.repository = $workflow_repository
+     | .status.workflow.repositoryOwner = $workflow_repository_owner
+     | .status.workflow.job = $workflow_job
+     | .status.workflow.action = $workflow_action
+      ')
+      
+    echo "$data" | curl \
+        --cacert ${serviceaccount}/ca.crt \
+        --data @- \
+        --noproxy '*' \
+        --header "Content-Type: application/merge-patch+json" \
+        --header "Authorization: Bearer ${token}" \
+        --show-error \
+        --silent \
+        --request PATCH \
+        "${apiserver}/apis/actions.summerwind.dev/v1alpha1/namespaces/${namespace}/runners/${HOSTNAME}/status" \
+        1>/dev/null
+fi
