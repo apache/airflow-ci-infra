@@ -15,7 +15,7 @@
 # specific language governing permissions and limitations
 # under the License.
 ---
-githubRepository: hussein-awala/airflow
+githubRepository: apache/airflow
 
 scaleDownDelaySecondsAfterScaleOut: 30
 
