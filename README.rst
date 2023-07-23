@@ -87,6 +87,31 @@ And for Helm, you mainly need two commands:
    # apply the helmfiles to deploy the desired state
    helmfile -f helm apply
 
+For Docker, we build a custom image for the runners, based on the official `Dockerfiles`_ provided by Github, but
+with the `Airflow runner release`_ managed by `Ash`_ instead of the official one, and with python installed on the image
+(check `setup-python issue`_ for more details).
+
+To build docker image, you can run the following command:
+
+.. code-block:: bash
+
+    TARGETPLATFORM=linux/arm64
+    RUNNER_OWNER=ashb
+    RUNNER_VERSION=2.304.0-airflow8
+    docker build --platform $TARGETPLATFORM \
+        --build-arg TARGETPLATFORM=$TARGETPLATFORM  \
+        --build-arg RUNNER_VERSION=$RUNNER_VERSION \
+        --build-arg RUNNER_OWNER=$RUNNER_OWNER \
+        -t public.ecr.aws/u9s5q9f7/airflow-gha-runner:$RUNNER_VERSION \
+        docker --push
+
+.. _Dockerfiles: https://github.com/actions/actions-runner-controller/tree/master/runner
+
+.. _Airflow runner release: https://github.com/ashb/runner/tree/v2.304.0-airflow8
+
+.. _Ash: https://github.com/ashb
+
+.. _setup-python issue: https://github.com/actions/setup-python/issues/705
 
 Some important notes
 ~~~~~~~~~~~~~~~~~~~~
