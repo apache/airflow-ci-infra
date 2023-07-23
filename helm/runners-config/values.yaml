@@ -22,7 +22,7 @@ scaleDownDelaySecondsAfterScaleOut: 30
 runners:
   - name: small
     minReplicas: 0
-    maxReplicas: 5
+    maxReplicas: 30
     labels:
       - small
     nodeSelector:
@@ -35,12 +35,25 @@ runners:
         effect: NoSchedule
   - name: medium
     minReplicas: 0
-    maxReplicas: 5
+    maxReplicas: 30
     labels:
       - medium
     nodeSelector:
       node-type: gha-runners
       size: medium
+    tolerations:
+      - key: node-type
+        operator: Equal
+        value: gha-runners
+        effect: NoSchedule
+  - name: large
+    minReplicas: 0
+    maxReplicas: 30
+    labels:
+      - large
+    nodeSelector:
+      node-type: gha-runners
+      size: large
     tolerations:
       - key: node-type
         operator: Equal
