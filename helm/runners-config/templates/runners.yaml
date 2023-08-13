@@ -47,6 +47,9 @@ spec:
                     values:
                       - {{ $runner.name }}-runners-deployment
               topologyKey: kubernetes.io/hostname
+      env:
+        - name: DISABLE_RUNNER_UPDATE
+          value: "false"  # TODO: Set to true to disable runner update after patching the latest version
 ---
 apiVersion: actions.summerwind.dev/v1alpha1
 kind: HorizontalRunnerAutoscaler
