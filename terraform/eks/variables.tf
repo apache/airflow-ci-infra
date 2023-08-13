@@ -26,3 +26,27 @@ variable "account_id" {
   type        = string
   default     = "827901512104"
 }
+
+variable "runners_node_types" {
+    description = "Node type for the runners"
+    type        = list(string)
+    default     = ["t4g"]
+}
+
+variable "small_runners_node_size" {
+    description = "Node size for the small runners"
+    type        = string
+    default     = "medium"
+}
+
+variable "medium_runners_node_size" {
+    description = "Node size for the medium runners"
+    type        = string
+    default     = "large"
+}
+
+variable "large_runners_node_size" {
+    description = "Node size for the large runners"
+    type        = string
+    default     = "2xlarge"
+}
