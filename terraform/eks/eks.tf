@@ -61,7 +61,7 @@ module "eks" {
     GHA_runners_small = {
       name = "gha-runners-small"
 
-      instance_types = ["t4g.medium"]
+      instance_types = [for node_type in var.runners_node_types: "${node_type}.${var.small_runners_node_size}"]
 
       min_size = 0
       max_size = 30
@@ -87,7 +87,7 @@ module "eks" {
     GHA_runners_medium = {
       name = "gha-runners-medium"
 
-      instance_types = ["t4g.large"]
+      instance_types = [for node_type in var.runners_node_types: "${node_type}.${var.medium_runners_node_size}"]
 
       min_size = 0
       max_size = 30
@@ -113,7 +113,7 @@ module "eks" {
     GHA_runners_large = {
       name = "gha-runners-large"
 
-      instance_types = ["t4g.2xlarge"]
+      instance_types = [for node_type in var.runners_node_types: "${node_type}.${var.large_runners_node_size}"]
 
       min_size = 0
       max_size = 30
