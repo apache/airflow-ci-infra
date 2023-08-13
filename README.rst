@@ -81,11 +81,15 @@ And for Helm, you mainly need two commands:
 
 .. code-block:: bash
 
-   # diff the helmfiles to compare the current state with the desired state
-   helmfile -f helm diff
+    # diff the infra helmfile to compare the current state with the desired state
+    helmfile -f helm/infra-helmfile.yaml diff
 
-   # apply the helmfiles to deploy the desired state
-   helmfile -f helm apply
+    # apply the helmfiles to deploy the desired state
+    helmfile -f helm/infra-helmfile.yaml apply
+
+    # same for ci helmfile
+    helmfile -f helm/ci-helmfile.yaml diff
+    helmfile -f helm/ci-helmfile.yaml apply
 
 For Docker, we build a custom image for the runners, based on the official `Dockerfiles`_ provided by Github, but
 with the `Airflow runner release`_ managed by `Ash`_ instead of the official one, and with python installed on the image
