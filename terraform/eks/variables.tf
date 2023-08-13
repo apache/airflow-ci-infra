@@ -42,7 +42,7 @@ variable "small_runners_node_size" {
 variable "medium_runners_node_size" {
     description = "Node size for the medium runners"
     type        = string
-    default     = "large"
+    default     = "xlarge"
 }
 
 variable "large_runners_node_size" {
