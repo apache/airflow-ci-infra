@@ -95,15 +95,12 @@ To build docker image, you can run the following command:
 
 .. code-block:: bash
 
-    TARGETPLATFORM=linux/arm64
-    RUNNER_OWNER=ashb
-    RUNNER_VERSION=2.304.0-airflow8
+    export TARGETPLATFORM=linux/arm64
+    export AIRFLOW_RUNNER_VERSION=2.304.0-airflow8
     docker build --platform $TARGETPLATFORM \
-        --build-arg TARGETPLATFORM=$TARGETPLATFORM  \
-        --build-arg RUNNER_VERSION=$RUNNER_VERSION \
-        --build-arg RUNNER_OWNER=$RUNNER_OWNER \
-        -t public.ecr.aws/u9s5q9f7/airflow-gha-runner:$RUNNER_VERSION \
-        docker --push
+        --build-arg AIRFLOW_RUNNER_VERSION=$AIRFLOW_RUNNER_VERSION \
+        -t public.ecr.aws/u9s5q9f7/airflow-gha-runner:$AIRFLOW_RUNNER_VERSION \
+        runner --push
 
 .. _Dockerfiles: https://github.com/actions/actions-runner-controller/tree/master/runner
 
