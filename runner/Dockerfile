@@ -20,6 +20,8 @@ RUN rm -rf $RUNNER_ASSETS_DIR/* \
 # TODO: Remove this once https://github.com/actions/setup-python/issues/705 is solved
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
-    curl nodejs wget unzip vim git jq build-essential libssl-dev libffi-dev python3 python3-venv python3-dev python3-pip
+    curl nodejs wget unzip vim git jq build-essential libssl-dev libffi-dev python3 python3-venv python3-dev python3-pip python-is-python3 \
+    && chown -R runner:runner /usr/local/lib/ --recursive \
+    && chown -R runner:runner /usr/local/bin/ --recursive
 
 USER runner
