@@ -38,7 +38,7 @@ source "amazon-ebs" "runner_builder" {
   #access_key = ""
   #secret_key = ""
   region = var.aws_regions[0]
-  ami_name = "${var.ami_name}-${var.runner_version}-v15"
+  ami_name = "${var.ami_name}-${var.runner_version}-v16"
   ami_regions = var.aws_regions
   tag {
     key   = "Name"
