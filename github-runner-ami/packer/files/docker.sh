@@ -19,7 +19,7 @@
 
 set -exu -o pipefail
 
-for pkg in docker.io docker-doc docker-compose podman-docker containerd runc; do sudo apt-get remove $pkg --assume-yes; done
+for pkg in docker.io docker-doc docker-compose podman-docker containerd runc; do sudo apt-get remove $pkg --assume-yes || true; done
 
 sudo apt-get update
 sudo apt-get install ca-certificates curl gnupg
