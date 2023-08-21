@@ -44,4 +44,4 @@ sudo apt-get install \
   "docker-ce-cli=${DOCKER_VERSION_STRING}" \
   containerd.io \
   "docker-buildx-plugin=${DOCKER_BUILDX_VERSION_STRING}" \
-  "docker-compose-plugin=${DOCKER_COMPOSE_VERSION_STRING}" --asume-yes --allow-downgrades
+  "docker-compose-plugin=${DOCKER_COMPOSE_VERSION_STRING}" --assume-yes --allow-downgrades
