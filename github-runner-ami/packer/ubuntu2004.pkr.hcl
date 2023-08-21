@@ -146,12 +146,11 @@ build {
       "./files/install-nodejs.sh",
       "./files/install-github-cli.sh",
       "./files/install-subversion.sh",
-      "./files/docker-compose.sh",
+      "./files/docker.sh",
       "./files/configure_kernel.sh",
       "./files/git.sh",
       "./files/runner_bootstrap.sh",
       "./files/create-hostedtools-cache.sh",
-      "./files/docker-buildx.sh",
       "./files/regctl.sh",
       "./files/cleanup.sh",
     ]
