@@ -64,17 +64,6 @@ apt-get update
 apt-get install --upgrade git -y
 git --version
 
-# Install git-lfs
-curl -s $GIT_LFS_REPO/script.deb.sh | bash
-apt-get install -y git-lfs=2.13.3
-
-# Install git-ftp
-apt-get install git-ftp -y
-
-# Remove source repo's
-add-apt-repository --remove $GIT_REPO
-rm /etc/apt/sources.list.d/github_git-lfs.list
-
 #Install hub
 tmp_hub="/tmp/hub"
 mkdir -p "$tmp_hub"
