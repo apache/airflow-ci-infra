@@ -30,7 +30,7 @@ apt-get update
 apt-get install -yq --no-install-recommends -o Dpkg::Options::="--force-confold" \
             awscli \
             build-essential \
-            docker.io \
+            autossh \
             git \
             haveged \
             iptables-persistent \
