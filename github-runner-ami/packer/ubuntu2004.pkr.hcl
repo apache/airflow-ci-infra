@@ -30,6 +30,9 @@ variable "packer_role_arn" {
 variable "runner_version" {
   type = string
 }
+variable "runner_labels" {
+  type = string
+}
 variable "session_manager_instance_profile_name" {
   type = string
 }
@@ -157,6 +160,7 @@ build {
     execute_command = "chmod +x '{{ .Path }}'; sudo sh -c '{{ .Vars }} {{ .Path }}'"
     environment_vars = [
       "RUNNER_VERSION=${var.runner_version}",
+      "RUNNER_LABELS=${var.runner_labels}",
     ]
   }
 }
