@@ -23,10 +23,11 @@ BindsTo=actions.runner-supervisor.service
 
 [Service]
 ExecStartPre=!/usr/local/sbin/runner-cleanup-workdir.sh
-ExecStart=/home/runner/actions-runner/run.sh --once --startuptype service
+ExecStart=/home/runner/actions-runner/run.sh --once --startuptype service --labels $RUNNER_LABELS
 ExecStop=/usr/local/bin/stop-runner-if-no-job.sh $MAINPID
 EnvironmentFile=/etc/environment
 Environment=GITHUB_ACTIONS_RUNNER_CHANNEL_TIMEOUT=300
+Environment=RUNNER_LABELS=airflow-runner,vm-runner
 User=runner
 WorkingDirectory=/home/runner/actions-runner
 KillMode=mixed
