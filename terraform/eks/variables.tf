@@ -33,8 +33,8 @@ variable "runners_node_types" {
     default     = ["t4g"]
 }
 
-variable "x86_runners_node_types" {
-  description = "X86 node type for the runners"
+variable "x64_runners_node_types" {
+  description = "X64 node type for the runners"
   type        = list(string)
   default     = [
     "r6a",
@@ -53,7 +53,7 @@ variable "small_runners_node_size" {
     default     = "medium"
 }
 
-variable "small_runners_x86_node_size" {
+variable "small_runners_x64_node_size" {
   # This is a separate variable because the r series doesn't have a medium size
   description = "Node size for the small runners"
   type        = string

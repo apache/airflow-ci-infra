@@ -70,46 +70,46 @@ runners:
         operator: Equal
         value: gha-runners
         effect: NoSchedule
-  - name: small-x86
+  - name: small-x64
     minReplicas: 0
     maxReplicas: 30
     labels:
       - small
-      - x86
+      - X64
     nodeSelector:
       node-type: gha-runners
       size: small
-      arch: x86
+      arch: x64
     tolerations:
       - key: node-type
         operator: Equal
         value: gha-runners
         effect: NoSchedule
-  - name: medium-x86
+  - name: medium-x64
     minReplicas: 0
     maxReplicas: 30
     labels:
       - medium
-      - x86
+      - X64
     nodeSelector:
       node-type: gha-runners
       size: medium
-      arch: x86
+      arch: x64
     tolerations:
       - key: node-type
         operator: Equal
         value: gha-runners
         effect: NoSchedule
-  - name: large-x86
+  - name: large-x64
     minReplicas: 0
     maxReplicas: 30
     labels:
       - large
-      - x86
+      - X64
     nodeSelector:
       node-type: gha-runners
       size: large
-      arch: x86
+      arch: x64
     tolerations:
       - key: node-type
         operator: Equal
