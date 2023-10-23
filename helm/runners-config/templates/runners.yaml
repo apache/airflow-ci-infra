@@ -20,6 +20,7 @@
 ################################################################################
 # Airflow GitHub Actions Runner Deployments and HRAutoscaler
 ################################################################################
+{{ $common := .Values.common }}
 {{ $values := .Values }}
 {{ range $runner := $values.runners }}
 ---
@@ -36,6 +37,7 @@ spec:
       tolerations:
         {{- $runner.tolerations | toYaml | nindent 8 }}
       labels:
+        {{- $common.runnersLabels | toYaml | nindent 8 }}
         {{- $runner.labels | toYaml | nindent 8 }}
       affinity:
         podAntiAffinity:

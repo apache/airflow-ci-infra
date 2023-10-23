@@ -58,6 +58,7 @@ module "eks" {
       }
     }
 
+    # GHA arm runners' nodes
     GHA_runners_small = {
       name = "gha-runners-small"
 
@@ -73,6 +74,7 @@ module "eks" {
       labels = {
         "node-type" = "gha-runners"
         "size"      = "small"
+        "arch"      = "arm64"
       }
 
       taints = [
@@ -99,6 +101,7 @@ module "eks" {
       labels = {
         "node-type" = "gha-runners"
         "size"      = "medium"
+        "arch"      = "arm64"
       }
 
       taints = [
@@ -123,6 +126,93 @@ module "eks" {
       labels = {
         "node-type" = "gha-runners"
         "size"      = "large"
+        "arch"      = "arm64"
+      }
+
+      taints = [
+        {
+          "key"    = "node-type"
+          "value"  = "gha-runners"
+          "effect" = "NO_SCHEDULE"
+        }
+      ]
+    }
+
+    # GHA x86 runners' nodes
+    x86_GHA_runners_small = {
+      name = "gha-x86-runners-small"
+
+      ami_type = "AL2_x86_64"
+
+      instance_types = [for node_type in var.x86_runners_node_types: "${node_type}.${var.small_runners_x86_node_size}"]
+
+      min_size = 0
+      max_size = 30
+
+      capacity_type = "SPOT"
+
+      disk_size = 50
+
+      labels = {
+        "node-type" = "gha-runners"
+        "size"      = "small"
+        "arch"      = "x86"
+      }
+
+      taints = [
+        {
+          "key"    = "node-type"
+          "value"  = "gha-runners"
+          "effect" = "NO_SCHEDULE"
+        }
+      ]
+    }
+
+    x86_GHA_runners_medium = {
+      name = "gha-x86-runners-medium"
+
+      ami_type = "AL2_x86_64"
+
+      instance_types = [for node_type in var.x86_runners_node_types: "${node_type}.${var.medium_runners_node_size}"]
+
+      min_size = 0
+      max_size = 30
+
+      capacity_type = "SPOT"
+
+      disk_size = 50
+
+      labels = {
+        "node-type" = "gha-runners"
+        "size"      = "medium"
+        "arch"      = "x86"
+      }
+
+      taints = [
+        {
+          "key"    = "node-type"
+          "value"  = "gha-runners"
+          "effect" = "NO_SCHEDULE"
+        }
+      ]
+    }
+
+    x86_GHA_runners_large = {
+      name = "gha-x86-runners-large"
+
+      ami_type = "AL2_x86_64"
+
+      instance_types = [for node_type in var.x86_runners_node_types: "${node_type}.${var.large_runners_node_size}"]
+
+      min_size = 0
+      max_size = 30
+
+      capacity_type = "SPOT"
+
+      labels = {
+        "node-type" = "gha-runners"
+        "size"      = "large"
+        "arch"      = "x86"
       }
 
       taints = [
