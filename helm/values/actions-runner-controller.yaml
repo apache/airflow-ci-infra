@@ -27,5 +27,5 @@ nodeSelector:
   node-type: default
 
 image:
-  actionsRunnerRepositoryAndTag: public.ecr.aws/u9s5q9f7/airflow-gha-runner:2.304.0-airflow8
+  actionsRunnerRepositoryAndTag: public.ecr.aws/u9s5q9f7/airflow-gha-runner:2.309.0-airflow11
   dindSidecarRepositoryAndTag: public.ecr.aws/u9s5q9f7/docker:dind
