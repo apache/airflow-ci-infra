@@ -36,8 +36,8 @@ echo \
 sudo apt-get update
 
 # Same version as MIN_VERSIONS in Breeze
-DOCKER_VERSION_STRING="5:23.0.0-1~ubuntu.20.04~focal"
-DOCKER_COMPOSE_VERSION_STRING="2.14.1~ubuntu-focal"
+DOCKER_VERSION_STRING="5:24.0.0-1~ubuntu.20.04~focal"
+DOCKER_COMPOSE_VERSION_STRING="2.19.1-1~ubuntu.20.04~focal"
 DOCKER_BUILDX_VERSION_STRING="0.11.2-1~ubuntu.20.04~focal"
 sudo apt-get install \
   "docker-ce=${DOCKER_VERSION_STRING}" \
