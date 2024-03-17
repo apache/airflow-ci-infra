@@ -41,7 +41,7 @@ source "amazon-ebs" "runner_builder" {
   #access_key = ""
   #secret_key = ""
   region = var.aws_regions[0]
-  ami_name = "${var.ami_name}-${var.runner_version}-v20"
+  ami_name = "${var.ami_name}-${var.runner_version}-v22"
   ami_regions = var.aws_regions
   tag {
     key   = "Name"
@@ -65,7 +65,7 @@ source "amazon-ebs" "runner_builder" {
   source_ami_filter {
     filters = {
        virtualization-type = "hvm"
-       name = "ubuntu/images/*buntu-focal-20.04-amd64-server-*"
+       name = "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"
        root-device-type = "ebs"
     }
     owners = ["099720109477"]
@@ -132,6 +132,10 @@ build {
   provisioner "file" {
     destination = "/tmp/timber.key"
     source      = "./files/timber.key"
+  }
+  provisioner "file" {
+    destination = "/tmp/yarn.key"
+    source      = "./files/yarn.key"
   }
   provisioner "file" {
     destination = "/tmp/runner-supervisor"

@@ -17,7 +17,11 @@
 # specific language governing permissions and limitations
 # under the License.
 
-apt-key adv --recv-key 0x1646B01B86E50310 "1646B01B86E50310"
-echo "deb https://dl.yarnpkg.com/debian/ stable main" > /etc/apt/sources.list.d/yarn.list
-apt-key add /tmp/timber.key
-echo "deb https://repositories.timber.io/public/vector/deb/ubuntu focal main" > /etc/apt/sources.list.d/timber.list
+cp /tmp/yarn.key /etc/apt/keyrings/yarn.gpg
+sudo chmod a+r /etc/apt/keyrings/yarn.gpg
+
+cp /tmp/timber.key /etc/apt/keyrings/timber.gpg
+sudo chmod a+r /etc/apt/keyrings/timber.gpg
+
+echo "deb [signed-by=/etc/apt/keyrings/yarn.gpg] https://dl.yarnpkg.com/debian/ stable main" > /etc/apt/sources.list.d/yarn.list
+echo "deb [signed-by=/etc/apt/keyrings/timber.gpg] https://repositories.timber.io/public/vector/deb/ubuntu jammy main" > /etc/apt/sources.list.d/timber.list

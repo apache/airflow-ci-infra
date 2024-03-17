@@ -22,26 +22,20 @@ set -exu -o pipefail
 for pkg in docker.io docker-doc docker-compose podman-docker containerd runc; do sudo apt-get remove $pkg --assume-yes || true; done
 
 sudo apt-get update
-sudo apt-get install ca-certificates curl gnupg
-
-sudo install -m 0755 -d /etc/apt/keyrings
-curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
-sudo chmod a+r /etc/apt/keyrings/docker.gpg
-
-echo \
-  "deb [arch="$(dpkg --print-architecture)" signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
-  "$(. /etc/os-release && echo "$VERSION_CODENAME")" stable" | \
-  sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+sudo apt-get install ca-certificates curl gnupg --assume-yes
 
 sudo apt-get update
+sudo apt-get install ca-certificates curl
+sudo install -m 0755 -d /etc/apt/keyrings
+sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+sudo chmod a+r /etc/apt/keyrings/docker.asc
 
-# Same version as MIN_VERSIONS in Breeze
-DOCKER_VERSION_STRING="5:24.0.7-1~ubuntu.20.04~focal"
-DOCKER_COMPOSE_VERSION_STRING="2.20.2-1~ubuntu.20.04~focal"
-DOCKER_BUILDX_VERSION_STRING="0.11.2-1~ubuntu.20.04~focal"
-sudo apt-get install \
-  "docker-ce=${DOCKER_VERSION_STRING}" \
-  "docker-ce-cli=${DOCKER_VERSION_STRING}" \
-  containerd.io \
-  "docker-buildx-plugin=${DOCKER_BUILDX_VERSION_STRING}" \
-  "docker-compose-plugin=${DOCKER_COMPOSE_VERSION_STRING}" --assume-yes --allow-downgrades
+echo \
+  "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu \
+  $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | \
+  sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+sudo apt-get update
+
+
+# Install latest versions of docker - that gives better security and performance
+sudo apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin --assume-yes
