@@ -21,12 +21,6 @@ variable "region" {
   default     = "us-east-2"
 }
 
-variable "account_id" {
-  description = "AWS account ID"
-  type        = string
-  default     = "827901512104"
-}
-
 variable "runners_node_types" {
     description = "Node type for the runners"
     type        = list(string)

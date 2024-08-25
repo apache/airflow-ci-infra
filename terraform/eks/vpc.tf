@@ -18,7 +18,7 @@
 # TODO: use the existing VPC?
 module "vpc" {
   source  = "terraform-aws-modules/vpc/aws"
-  version = "5.0.0"
+  version = "5.13.0"
 
   name = "airflow-vpc"
 
