@@ -23,7 +23,7 @@ releases:
   - name: actions-runner-controller
     chart: actions-runner-controller/actions-runner-controller
     namespace: ci
-    version: 0.23.5
+    version: 0.23.7
     values:
       - ./values/actions-runner-controller.yaml
 
