@@ -15,9 +15,35 @@
 # specific language governing permissions and limitations
 # under the License.
 ---
-apiVersion: v2
-name: runners-config
-description: A Helm chart to manage the ARC runners
-type: application
-version: 0.1.0
-appVersion: "1.16.0"
+image: ghcr.io/apache/airflow-ci-infra/actions-runner:20240830-rc1
+runnerScaleSets:
+    arc-small-amd:
+        minRunners: 0
+        maxRunners: 30
+        size: small
+        arch: x64
+    arc-medium-amd:
+        minRunners: 0
+        maxRunners: 30
+        size: medium
+        arch: x64
+    arc-large-amd:
+        minRunners: 0
+        maxRunners: 30
+        size: large
+        arch: x64
+    arc-small-arm:
+        minRunners: 0
+        maxRunners: 30
+        size: small
+        arch: arm64
+    arc-medium-arm:
+        minRunners: 0
+        maxRunners: 30
+        size: medium
+        arch: arm64
+    arc-large-arm:
+        minRunners: 0
+        maxRunners: 30
+        size: large
+        arch: arm64

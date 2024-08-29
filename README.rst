@@ -52,7 +52,7 @@ you need to follow the steps below:
 
 3. Update kubeconfig to access the EKS cluster::
 
-       AWS_PROFILE=airflow aws eks --region us-east-2 update-kubeconfig --name airflow
+       AWS_PROFILE=airflow aws eks --region us-east-2 update-kubeconfig --name airflow --alias airflow
 
    This command will update the kubeconfig file located at `~/.kube/config` to include the EKS cluster.
    You can verify that the cluster is added by running `kubectl get nodes`.

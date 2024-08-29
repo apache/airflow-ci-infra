@@ -19,9 +19,7 @@ replicaCount: 1
 
 labels:
   type: ci
-  app: actions-runner-controller
-
-syncPeriod: 10s
+  app: gha-runner-scale-set-controller
 
 nodeSelector:
   node-type: default

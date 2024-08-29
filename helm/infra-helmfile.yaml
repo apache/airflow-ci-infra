@@ -20,11 +20,20 @@ repositories:
     url: https://charts.jetstack.io
   - name: autoscaler
     url: https://kubernetes.github.io/autoscaler
+  - name: aws-ebs-csi-driver
+    url: https://kubernetes-sigs.github.io/aws-ebs-csi-driver
 
 releases:
   - name: cluster-config
     chart: ./cluster-config
     namespace: kube-system
+
+  # https://github.com/kubernetes-sigs/aws-ebs-csi-driver/tree/master/charts/aws-ebs-csi-driver
+  - name: aws-ebs-csi-driver
+    chart: aws-ebs-csi-driver/aws-ebs-csi-driver
+    namespace: kube-system
+    values:
+      - ./values/ebs-csi-dirver.yaml
 
   # https://cert-manager.io/docs/installation/helm/
   - name: cert-manager

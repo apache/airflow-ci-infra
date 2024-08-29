@@ -1,27 +1,35 @@
-ARG ACTIONS_RUNNER_VERSION=v2.309.0-ubuntu-22.04-ead26ab
-
-FROM summerwind/actions-runner:${ACTIONS_RUNNER_VERSION}
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+FROM ghcr.io/actions/actions-runner:latest
 
 USER root
 
-ARG AIRFLOW_RUNNER_VERSION=2.309.0-airflow11
-
-RUN rm -rf $RUNNER_ASSETS_DIR/* \
-    && export ARCH=$(arch) \
-    && if [ "$ARCH" = "amd64" ] || [ "$ARCH" = "x86_64" ] || [ "$ARCH" = "i386" ]; then export ARCH=x64 ; fi \
-    && if [ "$ARCH" = "aarch64" ]; then export ARCH=arm64 ; fi \
-    && cd "$RUNNER_ASSETS_DIR" \
-    && curl -fLo runner.tar.gz "https://github.com/ashb/runner/releases/download/v${AIRFLOW_RUNNER_VERSION}/actions-runner-linux-${ARCH}-${AIRFLOW_RUNNER_VERSION}.tar.gz" \
-    && tar xzf ./runner.tar.gz \
-    && rm runner.tar.gz \
-    && ./bin/installdependencies.sh \
-    && mv ./externals ./externalstmp
-
-# TODO: Remove this once https://github.com/actions/setup-python/issues/705 is solved
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-    curl nodejs wget unzip vim git jq build-essential libssl-dev libffi-dev python3 python3-venv python3-dev python3-pip python-is-python3 \
-    && chown -R runner:runner /usr/local/lib/ --recursive \
-    && chown -R runner:runner /usr/local/bin/ --recursive
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+    ca-certificates curl nodejs npm wget unzip vim git jq build-essential netcat \
+    libssl-dev libffi-dev python3 python3-venv python3-dev python3-pip python-is-python3 \
+    && npm install -g yarn \
+    && install -m 0755 -d /etc/apt/keyrings \
+    && curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc \
+    && chmod a+r /etc/apt/keyrings/docker.asc \
+    && echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu \
+    $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null \
+    && apt-get update \
+    && apt-get install -y docker-compose-plugin
 
 USER runner

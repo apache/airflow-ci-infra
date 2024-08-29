@@ -24,20 +24,21 @@ variable "region" {
 variable "runners_node_types" {
     description = "Node type for the runners"
     type        = list(string)
-    default     = ["t4g"]
+    default     = [
+      "t4g",
+      "m7g",
+      "m6g",
+    ]
 }
 
 variable "x64_runners_node_types" {
   description = "X64 node type for the runners"
   type        = list(string)
   default     = [
-    "r6a",
-    "r5",
-    "r5ad",
-    "r5n",
-    "r5b",
-    "r5a",
-    "r6i",
+    "m7a",
+    "m6a",
+    "t3",
+    "t3a",
   ]
 }
 

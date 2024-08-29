@@ -45,7 +45,14 @@ module "eks" {
     default_nodes = {
       name = "default"
 
-      instance_types = ["t4g.medium"]
+      instance_types = [
+        "t4g.medium",
+        "t4g.large",
+        "t4g.xlarge",
+        "m7g.medium",
+        "m7g.large",
+        "m7g.xlarge",
+      ]
 
       min_size     = 0
       max_size     = 5

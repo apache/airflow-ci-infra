@@ -1,0 +1,61 @@
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+---
+{{ $config := index .Values.runnerScaleSets .Release.Name }}
+
+githubConfigUrl: https://github.com/apache
+
+githubConfigSecret: github-config
+
+runnerGroup: airflow-ci
+
+minRunners: {{ $config.minRunners }}
+
+maxRunners: {{ $config.maxRunners }}
+
+containerMode:
+  type: "dind"
+
+template:
+  spec:
+    containers:
+      - name: runner
+        image: {{ .Values.image }}
+        command: [ "/home/runner/run.sh" ]
+    nodeSelector:
+      node-type: gha-runners
+      size: {{ $config.size }}
+      arch: {{ $config.arch }}
+    tolerations:
+      - key: node-type
+        operator: Equal
+        value: gha-runners
+        effect: NoSchedule
+    affinity:
+      podAntiAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+                - key: actions.github.com/scale-set-name
+                  operator: In
+                  values:
+                    - {{ .Release.Name }}
+            topologyKey: kubernetes.io/hostname
+
+controllerServiceAccount:
+  name: actions-runner-controller-gha-rs-controller
+  namespace: {{ .Release.Namespace }}
