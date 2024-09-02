@@ -15,7 +15,6 @@
 # specific language governing permissions and limitations
 # under the License.
 
-# TODO: use the existing VPC?
 module "vpc" {
   source  = "terraform-aws-modules/vpc/aws"
   version = "5.13.0"

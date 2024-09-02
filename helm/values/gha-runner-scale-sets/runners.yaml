@@ -15,7 +15,7 @@
 # specific language governing permissions and limitations
 # under the License.
 ---
-image: ghcr.io/apache/airflow-ci-infra/actions-runner:20240830-rc1
+image: ghcr.io/apache/airflow-ci-infra/actions-runner:20240902-rc1
 runnerScaleSets:
     arc-small-amd:
         minRunners: 0

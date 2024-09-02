@@ -22,7 +22,8 @@ Apache Airflow uses Github Actions as its Continuous Integration (CI) tool. When
 request, Github Actions runs a series of tests on Apache organization runners. However, due to the limited resources
 of these runners, the tests could take a significant amount of time, sometimes up to 2 hours. To improve efficiency
 for active committers, a separate set of runners is available for them. These CI runs are executed on self-hosted
-runners deployed on an Amazon Elastic Kubernetes Service (EKS) cluster.
+runners deployed on an Amazon Elastic Kubernetes Service (EKS) cluster, using
+[Actions Runner Controller](https://github.com/actions/actions-runner-controller) (ARC).
 
 This repository contains the necessary scripts and configuration files for managing the CI infrastructure
 of Apache Airflow.
