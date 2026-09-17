@@ -53,7 +53,7 @@ you need to follow the steps below:
 
 3. Update kubeconfig to access the EKS cluster::
 
-       AWS_PROFILE=airflow aws eks --region us-east-2 update-kubeconfig --name airflow --alias airflow
+       AWS_PROFILE=airflow aws eks --region us-east-2 update-kubeconfig --name airflow-ci --alias airflow-ci
 
    This command will update the kubeconfig file located at `~/.kube/config` to include the EKS cluster.
    You can verify that the cluster is added by running `kubectl get nodes`.
@@ -65,82 +65,82 @@ you need to follow the steps below:
 
 Airflow CI infrastructure architecture
 --------------------------------------
-.. image:: Airflow_CI.png
-   :width: 100%
-   :align: center
-   :alt: Airflow CI infrastructure architecture
 
-Manage the infrastructure resources
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+The design is documented in `docs/eks-runner-architecture.md <docs/eks-runner-architecture.md>`_.
+In short: an EKS cluster (standard mode) with a small always-on system node group runs
+`Actions Runner Controller <https://github.com/actions/actions-runner-controller>`_ (runner
+scale sets mode) and `Karpenter <https://karpenter.sh>`_; runner pods are ephemeral
+docker-in-docker pods, one job per pod, on spot nodes that Karpenter provisions on demand
+and reclaims when idle.
 
-We use Terraform to manage the EKS cluster and other AWS resources, and Helm (with helmfile) to manage the
-Kubernetes resources inside the cluster.
+Deploying from scratch
+~~~~~~~~~~~~~~~~~~~~~~
 
-For Terraform, you can find the detailed documentation here: `Terraform Documentation <terraform/README.rst>`_
+We use Terraform for the AWS resources and Helm (with helmfile) for everything inside the
+cluster. The order matters on a fresh account:
 
-And for Helm, you mainly need two commands:
+1. **Terraform** — see `Terraform Documentation <terraform/README.rst>`_::
 
-.. code-block:: bash
+       cd terraform/eks
+       terraform init
+       terraform plan -out=terraform.tfplan
+       terraform apply terraform.tfplan
 
-    # diff the infra helmfile to compare the current state with the desired state
-    helmfile -f helm/infra-helmfile.yaml diff
+2. **kubeconfig**::
 
-    # apply the helmfiles to deploy the desired state
-    helmfile -f helm/infra-helmfile.yaml apply
+       aws eks --region us-east-2 update-kubeconfig --name airflow-ci --alias airflow-ci
 
-    # same for ci helmfile
-    helmfile -f helm/ci-helmfile.yaml diff
-    helmfile -f helm/ci-helmfile.yaml apply
+3. **Infra helmfile** (namespaces, Karpenter, NodePools)::
 
-For Docker, we build a custom image for the runners, based on the official `Dockerfiles`_ provided by Github, but
-with the `Airflow runner release`_ managed by `Ash`_ instead of the official one, and with python installed on the image
-(check `setup-python issue`_ for more details).
+       helmfile -f helm/infra-helmfile.yaml diff
+       helmfile -f helm/infra-helmfile.yaml apply
 
-To build docker image, you can run the following command:
+4. **GitHub App secret** — create a GitHub App (for repository-level runners:
+   ``Administration: Read & write`` + ``Metadata: Read-only``; for organization-level
+   runners: ``Self-hosted runners: Read & write``), install it on the target
+   repo/org, then::
 
-.. code-block:: bash
+       kubectl create secret generic github-config --namespace arc-runners \
+         --from-literal=github_app_id=<app-id> \
+         --from-literal=github_app_installation_id=<installation-id> \
+         --from-file=github_app_private_key=<path-to-private-key.pem>
 
-    export TARGETPLATFORM=linux/arm64
-    export AIRFLOW_RUNNER_VERSION=2.304.0-airflow8
-    docker build --platform $TARGETPLATFORM \
-        --build-arg AIRFLOW_RUNNER_VERSION=$AIRFLOW_RUNNER_VERSION \
-        -t public.ecr.aws/u9s5q9f7/airflow-gha-runner:$AIRFLOW_RUNNER_VERSION \
-        runner --push
+5. **CI helmfile** (ARC controller + runner scale sets)::
 
-.. _Dockerfiles: https://github.com/actions/actions-runner-controller/tree/master/runner
+       helmfile -f helm/ci-helmfile.yaml.gotmpl diff
+       helmfile -f helm/ci-helmfile.yaml.gotmpl apply
 
-.. _Airflow runner release: https://github.com/ashb/runner/tree/v2.304.0-airflow8
+The runner image extends the official ``ghcr.io/actions/actions-runner`` image with the
+host tools airflow's CI expects (sudo, docker CLI + compose, python3, ...). Images are
+**date-tagged, never ``:latest``** — the tag referenced in
+``helm/values/gha-runner-scale-sets/runners.yaml`` must always be an explicit, reviewed
+pin. Build and push::
 
-.. _Ash: https://github.com/ashb
-
-.. _setup-python issue: https://github.com/actions/setup-python/issues/705
+    TAG=$(date +%Y%m%d)
+    docker build --platform linux/amd64 \
+        -t ghcr.io/apache/airflow-ci-infra/actions-runner:${TAG} runner
+    docker push ghcr.io/apache/airflow-ci-infra/actions-runner:${TAG}
+    # then update the image tag in helm/values/gha-runner-scale-sets/runners.yaml
 
 Some important notes
 ~~~~~~~~~~~~~~~~~~~~
 
-There are some configuration parameters that you need to be aware of:
-
-- EKS node group instance type:
-    In our current architecture, we use different types of runners, and each set of runners is configured via a
-    RunnerDeployment. Instead of setting container resources, we define the node selectors to schedule the
-    runner pod on a specific node group, and we add an anti-affinity to ensure the pod uses all the node resources
-    without sharing them with other runners. In this case, we need to carefully choose the instance types because they
-    represent the runners' resources.
-
-- ARC sync period:
-    The ARC sync period is the duration in which the controller reconciles the desired runners count. Increasing
-    this period could lead to a delay in the runners count update (more time in the queue when needing a scale-up
-    and a waste of resources when needing a scale-down). Decreasing it could lead to a high load on the Github API.
-
-- Autoscaler conf:
-    Similar to the ARC sync period, the autoscaler `scan-interval` is the duration in which the autoscaler checks the
-    cluster resources and scales up or down the cluster. Additionally, two other important parameters are
-    `scale-down-unneeded-time` and `scale-down-delay-after-add`, which control the delay before taking the scale-down
-    decision when the node is underutilized and the delay of checking the scaling-down necessity after a scale-up
-    decision.
-
-- HorizontalRunnerAutoscaler scaleDownDelaySecondsAfterScaleOut:
-    This parameter represents the delay before the HorizontalRunnerAutoscaler (HRA) takes the scale-down decision after
-    adding a new runner. Currently, we use a small delay (30 seconds) because the K8S autoscaler waits for 5 minutes
-    before deleting the node. So, if we need a runner, the HRA will add a new one, and it will be scheduled in less
-    than 20 seconds.
+- Runner sizing is done with pod **resource requests** (see
+  ``helm/values/gha-runner-scale-sets/runners.yaml``), not node selectors/anti-affinity:
+  Karpenter picks the cheapest spot instance that fits the request. The current single
+  ``airflow-runner-amd-xl`` class requests a whole 32-vCPU node per job.
+- Scale-up path: job queued → ARC listener requests a runner pod → pod Pending →
+  Karpenter launches a node (~60-90s). Scale-down: pod finishes → node empty →
+  Karpenter consolidates it after 60s (``WhenEmpty`` — running jobs are never evicted).
+- The dockerd inside each runner is configured (dind sidecar args in
+  ``helm/values/gha-runner-scale-sets/common.yaml.gotmpl``) with a registry mirror,
+  widened address pools and nofile ulimits — these fix real failures observed with
+  airflow's CI and should not be removed casually.
+- Workflows target the runners with ``runs-on: <scale-set-name>``, e.g.
+  ``runs-on: airflow-runner-amd-xl``.
+- **Spot policy (phase 1): spot-first for everything, deliberately.** A spot reclaim
+  kills the job mid-run — the job shows red with a "runner lost communication"
+  annotation; just re-run the failed jobs. Tripwire: if interruptions exceed ~2/week
+  (or kill the same canary twice in a row), pin the heavy runner class to on-demand
+  (``karpenter.sh/capacity-type`` requirement in the NodePool) once size classes are
+  split.

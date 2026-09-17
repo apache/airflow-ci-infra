@@ -28,22 +28,36 @@ Requirements
 
 In order to deploy the infrastructure, you need to have the following tools installed:
 
-- `tfenv <https://github.com/tfutils/tfenv>`_ to manage Terraform versions
+- Terraform >= 1.9 (e.g. via `tfenv <https://github.com/tfutils/tfenv>`_: ``tfenv install 1.9.5``)
 - Configure your AWS and EKS credentials :ref:`doc <aws_configuration>`
 
+State
+~~~~~
 
-Configure Terraform
-~~~~~~~~~~~~~~~~~~~
+The remote state lives in the ``airflow-ci-tfstate`` S3 bucket (``us-east-2``) with the
+``TerraformLocks`` DynamoDB table. Credentials/profile are taken from the environment
+(``AWS_PROFILE=...``), which also works for a future GitHub Actions plan/apply workflow
+assuming a role via OIDC — nothing is hardcoded in the provider.
 
-.. code-block:: bash
+.. note::
 
-   cd eks
-   tfenv install 1.5.3
+   The bucket also contains ``tf-state/eks.tfstate`` — the **2024 deployment's** state.
+   Its cluster is gone but leftovers (the ``airflow-vpc`` VPC, old node-group IAM roles,
+   the ``/aws/eks/airflow/cluster`` log group, the ``alias/eks/airflow`` KMS alias)
+   still exist in the account and are **deliberately left untouched**. The current
+   deployment therefore uses its own state key (``tf-state/eks-airflow-ci.tfstate``)
+   and the cluster name ``airflow-ci``, so every derived resource name avoids the 2024
+   ones. Do not import, modify, or delete the 2024 resources from this configuration.
+   For local iteration without touching the shared state, drop a
+   ``backend_override.tf`` (gitignored) with ``terraform { backend "local" {} }``
+   next to the sources.
 
 Plan and deploy the infrastructure
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: bash
+
+   cd eks
 
    # Initialize the Terraform modules and install the required providers,
    # just the first time or when you add a new module

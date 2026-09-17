@@ -18,9 +18,14 @@
 */}}
 
 ################################################################################
-# ci namespace where we create the CI resources
+# arc-systems: ARC controller + listeners; arc-runners: runner pods + secrets
 ################################################################################
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: ci
+  name: arc-systems
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: arc-runners

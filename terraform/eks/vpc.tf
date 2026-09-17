@@ -15,17 +15,21 @@
 # specific language governing permissions and limitations
 # under the License.
 
+# Nodes live in public subnets with public IPs on purpose: a NAT gateway costs
+# ~$400/yr while public IPv4 on ephemeral runner nodes is a few $/mo, and the
+# security groups allow no inbound traffic (runners are outbound-only).
 module "vpc" {
   source  = "terraform-aws-modules/vpc/aws"
-  version = "5.13.0"
+  version = "~> 6.6"
 
-  name = "airflow-vpc"
+  name = "airflow-ci-vpc"
 
   cidr = "10.1.0.0/16"
   azs  = slice(data.aws_availability_zones.available.names, 0, 3)
 
-  private_subnets = ["10.1.1.0/24", "10.1.2.0/24", "10.1.3.0/24"]
-  public_subnets  = ["10.1.4.0/24", "10.1.5.0/24", "10.1.6.0/24"]
+  # Docker inside the runners carves networks out of 172.16.0.0/14 — the VPC
+  # range must stay clear of it, hence 10.x.
+  public_subnets = ["10.1.4.0/24", "10.1.5.0/24", "10.1.6.0/24"]
 
   enable_nat_gateway   = false
   enable_dns_hostnames = true
@@ -34,11 +38,7 @@ module "vpc" {
 
   public_subnet_tags = {
     "kubernetes.io/cluster/${local.cluster_name}" = "shared"
-    "kubernetes.io/role/elb"                      = 1
-  }
-
-  private_subnet_tags = {
-    "kubernetes.io/cluster/${local.cluster_name}" = "shared"
-    "kubernetes.io/role/internal-elb"             = 1
+    # Karpenter's EC2NodeClass discovers subnets by this tag.
+    "karpenter.sh/discovery" = local.cluster_name
   }
 }

@@ -21,48 +21,14 @@ variable "region" {
   default     = "us-east-2"
 }
 
-variable "runners_node_types" {
-    description = "Node type for the runners"
-    type        = list(string)
-    default     = [
-      "t4g",
-      "m7g",
-      "m6g",
-    ]
-}
-
-variable "x64_runners_node_types" {
-  description = "X64 node type for the runners"
-  type        = list(string)
-  default     = [
-    "m7a",
-    "m6a",
-    "t3",
-    "t3a",
-  ]
-}
-
-variable "small_runners_node_size" {
-    description = "Node size for the small runners"
-    type        = string
-    default     = "medium"
-}
-
-variable "small_runners_x64_node_size" {
-  # This is a separate variable because the r series doesn't have a medium size
-  description = "Node size for the small runners"
+variable "kubernetes_version" {
+  description = "EKS Kubernetes version; keep within standard support to avoid extended-support fees"
   type        = string
-  default     = "large"
+  default     = "1.34"
 }
 
-variable "medium_runners_node_size" {
-    description = "Node size for the medium runners"
-    type        = string
-    default     = "xlarge"
-}
-
-variable "large_runners_node_size" {
-    description = "Node size for the large runners"
-    type        = string
-    default     = "2xlarge"
+variable "system_node_instance_types" {
+  description = "Instance types for the small always-on system node group (Karpenter + ARC controllers)"
+  type        = list(string)
+  default     = ["t4g.medium"]
 }

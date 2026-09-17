@@ -1,0 +1,71 @@
+{{/*
+ Licensed to the Apache Software Foundation (ASF) under one
+ or more contributor license agreements.  See the NOTICE file
+ distributed with this work for additional information
+ regarding copyright ownership.  The ASF licenses this file
+ to you under the Apache License, Version 2.0 (the
+ "License"); you may not use this file except in compliance
+ with the License.  You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+ Unless required by applicable law or agreed to in writing,
+ software distributed under the License is distributed on an
+ "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ KIND, either express or implied.  See the License for the
+ specific language governing permissions and limitations
+ under the License.
+*/}}
+apiVersion: karpenter.k8s.aws/v1
+kind: EC2NodeClass
+metadata:
+  name: ci
+spec:
+  amiSelectorTerms:
+    - alias: al2023@latest
+  role: {{ .Values.nodeIamRoleName }}
+  subnetSelectorTerms:
+    - tags:
+        karpenter.sh/discovery: {{ .Values.clusterName }}
+  securityGroupSelectorTerms:
+    - tags:
+        karpenter.sh/discovery: {{ .Values.clusterName }}
+  associatePublicIPAddress: true
+  metadataOptions:
+    httpTokens: required
+    # Hop limit 1 keeps node IAM credentials unreachable from the runner
+    # containers (CI jobs must not get AWS access via IMDS).
+    httpPutResponseHopLimit: 1
+  blockDeviceMappings:
+    - deviceName: /dev/xvda
+      ebs:
+        volumeSize: {{ .Values.nodeVolumeSize }}
+        volumeType: gp3
+        iops: 4000
+        throughput: 250
+        encrypted: true
+        deleteOnTermination: true
+  userData: |
+    MIME-Version: 1.0
+    Content-Type: multipart/mixed; boundary="BOUNDARY"
+
+    --BOUNDARY
+    Content-Type: text/x-shellscript; charset="us-ascii"
+
+    #!/bin/bash
+    # Kernel limits for KinD clusters and fd-heavy test suites; GitHub-hosted
+    # runners ship these, stock AL2023 does not.
+    modprobe nf_conntrack || true
+    sysctl -w fs.inotify.max_user_watches=524288
+    sysctl -w fs.inotify.max_user_instances=512
+    sysctl -w net.netfilter.nf_conntrack_tcp_be_liberal=1 || true
+    sysctl -w fs.nr_open=2097152
+    sysctl -w fs.file-max=2097152
+    # Disable core dumps: AL2023's default systemd-coredump handler is
+    # kernel-global, so a SEGV inside any container dumps the whole process
+    # through the node's journald first — under test-suite disk load that
+    # takes >60s and broke task-sdk's test_exit_by_signal[segv] (GitHub's
+    # Ubuntu runners short-circuit via apport instead). CI nodes are
+    # ephemeral; nobody reads their dumps.
+    sysctl -w "kernel.core_pattern=|/bin/false"
+    --BOUNDARY--

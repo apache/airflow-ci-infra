@@ -15,38 +15,26 @@
 # specific language governing permissions and limitations
 # under the License.
 ---
-repositories:
-  - name: jetstack
-    url: https://charts.jetstack.io
-  - name: autoscaler
-    url: https://kubernetes.github.io/autoscaler
-  - name: aws-ebs-csi-driver
-    url: https://kubernetes-sigs.github.io/aws-ebs-csi-driver
-
 releases:
   - name: cluster-config
     chart: ./cluster-config
     namespace: kube-system
 
-  # https://github.com/kubernetes-sigs/aws-ebs-csi-driver/tree/master/charts/aws-ebs-csi-driver
-  - name: aws-ebs-csi-driver
-    chart: aws-ebs-csi-driver/aws-ebs-csi-driver
+  # https://karpenter.sh/docs/getting-started/
+  # IAM/SQS for Karpenter comes from terraform/eks/karpenter.tf (Pod Identity).
+  - name: karpenter
+    chart: oci://public.ecr.aws/karpenter/karpenter
     namespace: kube-system
+    version: 1.11.3
     values:
-      - ./values/ebs-csi-dirver.yaml
+      - ./values/karpenter.yaml
 
-  # https://cert-manager.io/docs/installation/helm/
-  - name: cert-manager
-    chart: jetstack/cert-manager
-    namespace: infra
-    version: v1.15.3
-    values:
-      - ./values/cert-manager.yaml
-
-  # https://github.com/kubernetes/autoscaler/tree/master/charts/cluster-autoscaler
-  - name: autoscaler
-    chart: autoscaler/cluster-autoscaler
-    namespace: infra
-    version: 9.37.0
-    values:
-      - ./values/cluster-autoscaler.yaml
+  # NodePool/EC2NodeClass CRs — depends on the Karpenter CRDs.
+  - name: karpenter-resources
+    chart: ./karpenter-resources
+    namespace: kube-system
+    needs:
+      - kube-system/karpenter
+    # On a fresh cluster the CRDs don't exist until the karpenter release above
+    # installs, so the upfront diff/validation of this release must be skipped.
+    disableValidationOnInstall: true

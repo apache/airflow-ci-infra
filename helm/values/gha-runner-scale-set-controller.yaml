@@ -18,8 +18,7 @@
 replicaCount: 1
 
 labels:
-  type: ci
   app: gha-runner-scale-set-controller
 
-nodeSelector:
-  node-type: default
+# Watch all namespaces (scale sets live in arc-runners); no nodeSelector needed:
+# runner nodes are tainted, so the controller lands on the system node group.

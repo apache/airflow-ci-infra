@@ -15,21 +15,21 @@
 # specific language governing permissions and limitations
 # under the License.
 ---
-cloudProvider: aws
-awsRegion: us-east-2
+clusterName: airflow-ci
 
-autoDiscovery:
-  clusterName: "airflow"
+# Must match node_iam_role_name in terraform/eks/karpenter.tf.
+nodeIamRoleName: airflow-ci-runner-node
 
-rbac:
-  create: true
-  serviceAccount:
-    create: true
-    name: "cluster-autoscaler"
-    annotations:
-      eks.amazonaws.com/role-arn: arn:aws:iam::827901512104:role/eks-autoscaler-role
+# Root volume for runner nodes: CI image + KinD images + parallel compose
+# stacks need far more than the 20Gi AL2023 default (the previous runners had 256GB).
+nodeVolumeSize: 200Gi
 
-extraArgs:
-  scan-interval: 10s
-  scale-down-delay-after-add: 5m
-  scale-down-unneeded-time: 5m
+# Upper bound on total simultaneously provisioned runner capacity
+# (~100 concurrent 32-vCPU runner nodes).
+amdPoolCpuLimit: "3200"
+# On-demand shared pool (small/medium classes): sized for the measured
+# full-matrix peak (~60 nodes averaging well under 48 vCPU each).
+amdSharedPoolCpuLimit: "2000"
+# ARM (Graviton) pools mirror the AMD split; experiment-sized like amd was.
+armPoolCpuLimit: "3200"
+armSharedPoolCpuLimit: "2000"

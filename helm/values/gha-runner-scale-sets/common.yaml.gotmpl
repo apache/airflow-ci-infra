@@ -17,45 +17,134 @@
 ---
 {{ $config := index .Values.runnerScaleSets .Release.Name }}
 
-githubConfigUrl: https://github.com/apache
+githubConfigUrl: {{ .Values.githubConfigUrl }}
 
+# Pre-created secret in the arc-runners namespace holding the GitHub App
+# credentials (github_app_id / github_app_installation_id / github_app_private_key).
 githubConfigSecret: github-config
-
-runnerGroup: airflow-ci
 
 minRunners: {{ $config.minRunners }}
 
 maxRunners: {{ $config.maxRunners }}
 
-containerMode:
-  type: "dind"
-
+# The dind sidecar is spelled out (instead of `containerMode: dind`) so dockerd
+# gets flags that fix real failures measured on the previous self-hosted runners:
+#   --registry-mirror        Docker Hub anonymous pull limits on shared cloud
+#                            egress IPs (also covers in-container testcontainers
+#                            pulls that cannot use host credentials).
+#   --default-address-pool   parallel breeze compose stacks exhaust Docker's
+#                            default ~31 network pools; /14 carved into /24s
+#                            gives 1024 networks. Must not overlap the VPC CIDR
+#                            (10.1.0.0/16).
+#   --default-ulimit nofile  fd-heavy venv tests need >1024; the soft cap stays
+#                            at 65536 because processes that close(0..soft) on
+#                            spawn make a high soft limit a performance trap.
 template:
+  metadata:
+    annotations:
+      # Karpenter must never drain a node out from under a running CI job —
+      # not for drift (e.g. EC2NodeClass changes) and not for consolidation.
+      # Involuntary events (spot reclaim) are unaffected.
+      karpenter.sh/do-not-disrupt: "true"
   spec:
+    # CI jobs must not see this cluster's credentials: with the token mounted,
+    # kubernetes clients inside tests prefer in-cluster config over the KinD
+    # kubeconfig and hit the EKS API as the runner SA (403s broke the K8S
+    # system-test teardowns). EKS Pod Identity (S3 stash) uses its own
+    # separately-projected token and is unaffected.
+    automountServiceAccountToken: false
+    initContainers:
+      - name: init-dind-externals
+        image: {{ .Values.image }}
+        command: ["cp", "-r", "/home/runner/externals/.", "/home/runner/tmpDir/"]
+        volumeMounts:
+          - name: dind-externals
+            mountPath: /home/runner/tmpDir
+      - name: dind
+        image: docker:dind
+        args:
+          - dockerd
+          - --host=unix:///var/run/docker.sock
+          - --group=$(DOCKER_GROUP_GID)
+          - --registry-mirror=https://mirror.gcr.io
+          - --default-address-pool=base=172.16.0.0/14,size=24
+          - --default-ulimit=nofile=65536:1048576
+          # Classic image store (overlay2), matching GitHub-hosted runners.
+          # The containerd store (dind default) breaks `kind load docker-image`:
+          # docker save emits OCI manifests whose blobs ctr import --digests
+          # can't resolve ("content digest ... not found").
+          - --feature=containerd-snapshotter=false
+        env:
+          - name: DOCKER_GROUP_GID
+            value: "123"
+        securityContext:
+          privileged: true
+        restartPolicy: Always
+        startupProbe:
+          exec:
+            command: ["docker", "info"]
+          periodSeconds: 5
+          failureThreshold: 24
+        volumeMounts:
+          - name: work
+            mountPath: /home/runner/_work
+          - name: dind-sock
+            mountPath: /var/run
+          - name: dind-externals
+            mountPath: /home/runner/externals
+          # /tmp is shared with the runner (see runner container) so that
+          # `docker run -v /tmp/...` host paths resolve — the daemon lives
+          # here, not in the runner container.
+          - name: shared-tmp
+            mountPath: /tmp
     containers:
       - name: runner
         image: {{ .Values.image }}
-        command: [ "/home/runner/run.sh" ]
+        command: ["/home/runner/run.sh"]
+        env:
+          - name: DOCKER_HOST
+            value: unix:///var/run/docker.sock
+          - name: RUNNER_WAIT_FOR_DOCKER_IN_SECONDS
+            value: "120"
+          # Lets airflow-repo CI scripts detect the self-hosted K8s runner
+          # (guards for host-specific steps like the /mnt docker relocation).
+          - name: AIRFLOW_SELF_HOSTED_RUNNER
+            value: "eks"
+          # Class-sized xdist worker cap; run_unit_tests.sh only defaults
+          # PARALLELISM when unset, so this wins over its self-hosted fallback.
+          - name: PARALLELISM
+            value: {{ $config.parallelism | quote }}
+        resources:
+          requests:
+            cpu: {{ $config.cpu | quote }}
+            memory: {{ $config.memory }}
+        volumeMounts:
+          - name: work
+            mountPath: /home/runner/_work
+          - name: dind-sock
+            mountPath: /var/run
+          # Shared with the dind sidecar: tests bind-mount pytest tmpdirs
+          # (docker run -v /tmp/...) and the daemon resolves those paths in
+          # ITS filesystem. On GitHub-hosted runners daemon and job share one
+          # host; this emptyDir recreates that contract for /tmp.
+          - name: shared-tmp
+            mountPath: /tmp
+    volumes:
+      - name: work
+        emptyDir: {}
+      - name: dind-sock
+        emptyDir: {}
+      - name: dind-externals
+        emptyDir: {}
+      - name: shared-tmp
+        emptyDir: {}
     nodeSelector:
-      node-type: gha-runners
-      size: {{ $config.size }}
-      arch: {{ $config.arch }}
+      airflow-ci/pool: {{ $config.pool }}
     tolerations:
-      - key: node-type
-        operator: Equal
-        value: gha-runners
+      - key: airflow-ci/runner
+        operator: Exists
         effect: NoSchedule
-    affinity:
-      podAntiAffinity:
-        requiredDuringSchedulingIgnoredDuringExecution:
-          - labelSelector:
-              matchExpressions:
-                - key: actions.github.com/scale-set-name
-                  operator: In
-                  values:
-                    - {{ .Release.Name }}
-            topologyKey: kubernetes.io/hostname
 
 controllerServiceAccount:
   name: actions-runner-controller-gha-rs-controller
-  namespace: {{ .Release.Namespace }}
+  namespace: arc-systems

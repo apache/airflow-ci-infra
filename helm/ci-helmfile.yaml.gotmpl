@@ -20,19 +20,26 @@ environments:
     values:
       - ./values/gha-runner-scale-sets/runners.yaml
 
+# helmfile v1 requires environments and releases in separate YAML documents.
+---
 releases:
   - name: actions-runner-controller
     chart: oci://ghcr.io/actions/actions-runner-controller-charts/gha-runner-scale-set-controller
-    namespace: ci
-    version: 0.9.3
+    namespace: arc-systems
+    version: 0.14.2
     values:
       - ./values/gha-runner-scale-set-controller.yaml
 
   {{- range $key, $value := .Values.runnerScaleSets }}
   - name: {{ $key }}
     chart: oci://ghcr.io/actions/actions-runner-controller-charts/gha-runner-scale-set
-    namespace: ci
-    version: 0.9.3
+    namespace: arc-runners
+    version: 0.14.2
+    needs:
+      - arc-systems/actions-runner-controller
+    # AutoscalingRunnerSet CRD ships with the controller chart above — skip
+    # upfront validation so a fresh cluster can install in one pass.
+    disableValidationOnInstall: true
     values:
       - ./values/gha-runner-scale-sets/common.yaml.gotmpl
   {{- end }}

@@ -15,35 +15,70 @@
 # specific language governing permissions and limitations
 # under the License.
 ---
-image: ghcr.io/apache/airflow-ci-infra/actions-runner:20240902-rc1
+# Always a date-pinned tag, never :latest — an unreviewed image change must not
+# be able to break every canary at once. Rebuild monthly or when ARC's minimum
+# runner version forces it.
+# Fork-experiment override (public package on the fork owner's ghcr); switch to
+# ghcr.io/apache/airflow-ci-infra/actions-runner:<tag> for the production deploy.
+image: ghcr.io/shahar1/airflow-ci-actions-runner:20260731.2
+
+# Repo URL for the fork experiment; switch to https://github.com/apache
+# (org-level, with a restricted runner group) for the production deployment.
+githubConfigUrl: https://github.com/shahar1/airflow
+
+# Three size classes, assigned per job from the measured per-job peaks of the
+# 2026-07-26 go/no-go runs (airflow repo files/eks-class-mapping.md): each job's
+# runs-on picks the smallest class fitting peak x 1.3 headroom on both CPU and
+# memory (Non-DB providers is memory-bound at 35 GiB, hence xl). The xl request
+# fills a whole 32-vCPU node (one job = one node); small/medium pods bin-pack
+# when Karpenter batches several pending jobs onto one larger spot node.
+# parallelism feeds the PARALLELISM env (xdist worker cap in run_unit_tests.sh)
+# so test parallelism matches the class instead of oversubscribing small nodes.
 runnerScaleSets:
-    arc-small-amd:
-        minRunners: 0
-        maxRunners: 30
-        size: small
-        arch: x64
-    arc-medium-amd:
-        minRunners: 0
-        maxRunners: 30
-        size: medium
-        arch: x64
-    arc-large-amd:
-        minRunners: 0
-        maxRunners: 30
-        size: large
-        arch: x64
-    arc-small-arm:
-        minRunners: 0
-        maxRunners: 30
-        size: small
-        arch: arm64
-    arc-medium-arm:
-        minRunners: 0
-        maxRunners: 30
-        size: medium
-        arch: arm64
-    arc-large-arm:
-        minRunners: 0
-        maxRunners: 30
-        size: large
-        arch: arm64
+  # small/medium bin-pack onto shared nodes -> on-demand pool (a spot reclaim
+  # of a shared node kills every job on it and reruns re-pack the same batch;
+  # see nodepool-amd-shared.yaml).
+  airflow-runner-amd-small:
+    minRunners: 0
+    maxRunners: 60
+    pool: amd-shared
+    cpu: "4"
+    memory: 16Gi
+    parallelism: "4"
+  airflow-runner-amd-medium:
+    minRunners: 0
+    maxRunners: 80
+    pool: amd-shared
+    cpu: "8"
+    memory: 32Gi
+    parallelism: "8"
+  airflow-runner-amd-xl:
+    minRunners: 0
+    maxRunners: 100
+    pool: amd
+    cpu: "28"
+    memory: 56Gi
+    parallelism: "16"
+  # ARM (Graviton) classes mirror the AMD layout; the image tag is a
+  # multi-arch manifest so the same reference serves both architectures.
+  airflow-runner-arm-small:
+    minRunners: 0
+    maxRunners: 60
+    pool: arm-shared
+    cpu: "4"
+    memory: 16Gi
+    parallelism: "4"
+  airflow-runner-arm-medium:
+    minRunners: 0
+    maxRunners: 80
+    pool: arm-shared
+    cpu: "8"
+    memory: 32Gi
+    parallelism: "8"
+  airflow-runner-arm-xl:
+    minRunners: 0
+    maxRunners: 100
+    pool: arm
+    cpu: "28"
+    memory: 56Gi
+    parallelism: "16"

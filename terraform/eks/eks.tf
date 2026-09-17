@@ -18,218 +18,59 @@
 data "aws_availability_zones" "available" {}
 
 locals {
-  cluster_name = "airflow"
+  cluster_name = "airflow-ci"
 }
 
 module "eks" {
   source  = "terraform-aws-modules/eks/aws"
-  version = "20.24.0"
+  version = "~> 21.24"
 
-  cluster_name    = local.cluster_name
-  cluster_version = "1.30"
+  name               = local.cluster_name
+  kubernetes_version = var.kubernetes_version
 
   vpc_id     = module.vpc.vpc_id
   subnet_ids = module.vpc.public_subnets
 
-  cluster_endpoint_public_access = true
+  endpoint_public_access                   = true
+  enable_cluster_creator_admin_permissions = true
 
-  eks_managed_node_group_defaults = {
-    ami_type                   = "AL2_ARM_64"
-    use_custom_launch_template = false
-    disk_size                  = 50
-    desired_size               = 0
+  addons = {
+    coredns    = {}
+    kube-proxy = {}
+    # before_compute: the module disables EKS's bootstrap self-managed CNI when
+    # managed addons are used, so vpc-cni must exist BEFORE nodes boot — nodes
+    # without a CNI never become Ready and the node group lands in CREATE_FAILED
+    # (bitten by this on 2026-07-25 when a crashed apply skipped the addons).
+    vpc-cni = {
+      before_compute = true
+    }
+    # Required for Karpenter's Pod Identity association.
+    eks-pod-identity-agent = {
+      before_compute = true
+    }
+  }
+
+  # Karpenter's EC2NodeClass discovers the node security group by this tag.
+  node_security_group_tags = {
+    "karpenter.sh/discovery" = local.cluster_name
   }
 
   eks_managed_node_groups = {
+    # Small always-on group for the controllers (Karpenter, ARC, listeners).
+    # Everything else runs on Karpenter-provisioned nodes.
+    system = {
+      name           = "airflow-ci-system"
+      ami_type       = "AL2023_ARM_64_STANDARD"
+      instance_types = var.system_node_instance_types
+      capacity_type  = "ON_DEMAND"
 
-    default_nodes = {
-      name = "default"
-
-      instance_types = [
-        "t4g.medium",
-        "t4g.large",
-        "t4g.xlarge",
-        "m7g.medium",
-        "m7g.large",
-        "m7g.xlarge",
-      ]
-
-      min_size     = 0
-      max_size     = 5
-      desired_size = 1
-
-      capacity_type = "SPOT"
+      min_size     = 2
+      max_size     = 3
+      desired_size = 2
 
       labels = {
-        "node-type" = "default"
+        "airflow-ci/role" = "system"
       }
-    }
-
-    # GHA arm runners' nodes
-    GHA_runners_small = {
-      name = "gha-runners-small"
-
-      instance_types = [for node_type in var.runners_node_types: "${node_type}.${var.small_runners_node_size}"]
-
-      min_size = 0
-      max_size = 30
-
-      capacity_type = "SPOT"
-
-      disk_size = 50
-
-      labels = {
-        "node-type" = "gha-runners"
-        "size"      = "small"
-        "arch"      = "arm64"
-      }
-
-      taints = [
-        {
-          "key"    = "node-type"
-          "value"  = "gha-runners"
-          "effect" = "NO_SCHEDULE"
-        }
-      ]
-    }
-
-    GHA_runners_medium = {
-      name = "gha-runners-medium"
-
-      instance_types = [for node_type in var.runners_node_types: "${node_type}.${var.medium_runners_node_size}"]
-
-      min_size = 0
-      max_size = 30
-
-      capacity_type = "SPOT"
-
-      disk_size = 50
-
-      labels = {
-        "node-type" = "gha-runners"
-        "size"      = "medium"
-        "arch"      = "arm64"
-      }
-
-      taints = [
-        {
-          "key"    = "node-type"
-          "value"  = "gha-runners"
-          "effect" = "NO_SCHEDULE"
-        }
-      ]
-    }
-
-    GHA_runners_large = {
-      name = "gha-runners-large"
-
-      instance_types = [for node_type in var.runners_node_types: "${node_type}.${var.large_runners_node_size}"]
-
-      min_size = 0
-      max_size = 30
-
-      capacity_type = "SPOT"
-
-      labels = {
-        "node-type" = "gha-runners"
-        "size"      = "large"
-        "arch"      = "arm64"
-      }
-
-      taints = [
-        {
-          "key"    = "node-type"
-          "value"  = "gha-runners"
-          "effect" = "NO_SCHEDULE"
-        }
-      ]
-    }
-
-    # GHA x64 runners' nodes
-    x64_GHA_runners_small = {
-      name = "gha-x64-runners-small"
-
-      ami_type = "AL2_x86_64"
-
-      instance_types = [for node_type in var.x64_runners_node_types: "${node_type}.${var.small_runners_x64_node_size}"]
-
-      min_size = 0
-      max_size = 30
-
-      capacity_type = "SPOT"
-
-      disk_size = 50
-
-      labels = {
-        "node-type" = "gha-runners"
-        "size"      = "small"
-        "arch"      = "x64"
-      }
-
-      taints = [
-        {
-          "key"    = "node-type"
-          "value"  = "gha-runners"
-          "effect" = "NO_SCHEDULE"
-        }
-      ]
-    }
-
-    x64_GHA_runners_medium = {
-      name = "gha-x64-runners-medium"
-
-      ami_type = "AL2_x86_64"
-
-      instance_types = [for node_type in var.x64_runners_node_types: "${node_type}.${var.medium_runners_node_size}"]
-
-      min_size = 0
-      max_size = 30
-
-      capacity_type = "SPOT"
-
-      disk_size = 50
-
-      labels = {
-        "node-type" = "gha-runners"
-        "size"      = "medium"
-        "arch"      = "x64"
-      }
-
-      taints = [
-        {
-          "key"    = "node-type"
-          "value"  = "gha-runners"
-          "effect" = "NO_SCHEDULE"
-        }
-      ]
-    }
-
-    x64_GHA_runners_large = {
-      name = "gha-x64-runners-large"
-
-      ami_type = "AL2_x86_64"
-
-      instance_types = [for node_type in var.x64_runners_node_types: "${node_type}.${var.large_runners_node_size}"]
-
-      min_size = 0
-      max_size = 30
-
-      capacity_type = "SPOT"
-
-      labels = {
-        "node-type" = "gha-runners"
-        "size"      = "large"
-        "arch"      = "x64"
-      }
-
-      taints = [
-        {
-          "key"    = "node-type"
-          "value"  = "gha-runners"
-          "effect" = "NO_SCHEDULE"
-        }
-      ]
     }
   }
 }
-

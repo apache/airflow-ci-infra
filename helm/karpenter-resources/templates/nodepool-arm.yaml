@@ -1,0 +1,63 @@
+{{/*
+ Licensed to the Apache Software Foundation (ASF) under one
+ or more contributor license agreements.  See the NOTICE file
+ distributed with this work for additional information
+ regarding copyright ownership.  The ASF licenses this file
+ to you under the Apache License, Version 2.0 (the
+ "License"); you may not use this file except in compliance
+ with the License.  You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+ Unless required by applicable law or agreed to in writing,
+ software distributed under the License is distributed on an
+ "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ KIND, either express or implied.  See the License for the
+ specific language governing permissions and limitations
+ under the License.
+*/}}
+apiVersion: karpenter.sh/v1
+kind: NodePool
+metadata:
+  name: ci-arm
+spec:
+  template:
+    metadata:
+      labels:
+        airflow-ci/pool: arm
+    spec:
+      nodeClassRef:
+        group: karpenter.k8s.aws
+        kind: EC2NodeClass
+        name: ci
+      # Only runner pods (which tolerate this) land on these nodes, so they
+      # never pin cluster infra and can be reclaimed the moment a job ends.
+      taints:
+        - key: airflow-ci/runner
+          effect: NoSchedule
+      requirements:
+        - key: kubernetes.io/arch
+          operator: In
+          values: ["arm64"]
+        - key: kubernetes.io/os
+          operator: In
+          values: ["linux"]
+        # Spot first; Karpenter falls back to on-demand when spot is unavailable.
+        - key: karpenter.sh/capacity-type
+          operator: In
+          values: ["spot", "on-demand"]
+        - key: karpenter.k8s.aws/instance-family
+          operator: In
+          values: ["c6g", "c7g", "c8g", "m6g", "m7g", "m8g", "r6g", "r7g", "r8g"]
+        # Small enough sizes for the small/medium runner classes to get
+        # right-sized (or bin-packed) nodes; xl pods still land on >= 32 vCPU
+        # because their 28-vCPU request cannot fit anything smaller.
+        - key: karpenter.k8s.aws/instance-cpu
+          operator: In
+          values: ["8", "16", "32", "48"]
+  disruption:
+    # Never repack running CI jobs; only reap empty nodes.
+    consolidationPolicy: WhenEmpty
+    consolidateAfter: 60s
+  limits:
+    cpu: {{ .Values.armPoolCpuLimit | quote }}

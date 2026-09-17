@@ -15,7 +15,17 @@
 # specific language governing permissions and limitations
 # under the License.
 ---
+settings:
+  clusterName: airflow-ci
+  # Must match queue_name in terraform/eks/karpenter.tf.
+  interruptionQueue: airflow-ci-karpenter
+
+# IAM comes from the EKS Pod Identity association created by Terraform —
+# no serviceAccount role annotation needed.
+
+# Fits the 2x t4g.medium system nodes.
 controller:
-  serviceAccount:
-    annotations:
-      eks.amazonaws.com/role-arn: arn:aws:iam::827901512104:role/ebs-csi-driver
+  resources:
+    requests:
+      cpu: 500m
+      memory: 768Mi

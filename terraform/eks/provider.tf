@@ -15,7 +15,16 @@
 # specific language governing permissions and limitations
 # under the License.
 
+# Credentials come from the environment (AWS_PROFILE locally, OIDC role in a
+# future GitHub Actions workflow) — do not hardcode a profile here.
 provider "aws" {
-  profile = "airflow"
-  region  = var.region
+  region = var.region
+
+  default_tags {
+    tags = {
+      Project   = "airflow-ci"
+      ManagedBy = "terraform"
+      Repo      = "apache/airflow-ci-infra"
+    }
+  }
 }

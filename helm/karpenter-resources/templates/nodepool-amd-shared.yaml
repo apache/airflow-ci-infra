@@ -1,0 +1,65 @@
+{{/*
+ Licensed to the Apache Software Foundation (ASF) under one
+ or more contributor license agreements.  See the NOTICE file
+ distributed with this work for additional information
+ regarding copyright ownership.  The ASF licenses this file
+ to you under the Apache License, Version 2.0 (the
+ "License"); you may not use this file except in compliance
+ with the License.  You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+ Unless required by applicable law or agreed to in writing,
+ software distributed under the License is distributed on an
+ "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ KIND, either express or implied.  See the License for the
+ specific language governing permissions and limitations
+ under the License.
+*/}}
+{{/*
+ On-demand pool for the bin-packed small/medium runner classes. Shared nodes
+ concentrate many jobs, so a single spot reclaim kills them all at once and a
+ rerun re-packs the same jobs into the same vulnerable shape (measured
+ 2026-07-27/28: reclaim storms of 5-57 events wiped whole retry batches
+ repeatedly; the on-demand premium is ~$1.5-2 per run). The xl class stays on
+ the spot-first `ci-amd` pool: one job per node, so reclaims stay cheap,
+ independent retries.
+*/}}
+apiVersion: karpenter.sh/v1
+kind: NodePool
+metadata:
+  name: ci-amd-shared
+spec:
+  template:
+    metadata:
+      labels:
+        airflow-ci/pool: amd-shared
+    spec:
+      nodeClassRef:
+        group: karpenter.k8s.aws
+        kind: EC2NodeClass
+        name: ci
+      taints:
+        - key: airflow-ci/runner
+          effect: NoSchedule
+      requirements:
+        - key: kubernetes.io/arch
+          operator: In
+          values: ["amd64"]
+        - key: kubernetes.io/os
+          operator: In
+          values: ["linux"]
+        - key: karpenter.sh/capacity-type
+          operator: In
+          values: ["on-demand"]
+        - key: karpenter.k8s.aws/instance-family
+          operator: In
+          values: ["c6a", "c7a", "m6a", "m7a", "r6a", "r7a", "c6i", "c7i", "m6i", "m7i"]
+        - key: karpenter.k8s.aws/instance-cpu
+          operator: In
+          values: ["8", "16", "32", "48"]
+  disruption:
+    consolidationPolicy: WhenEmpty
+    consolidateAfter: 60s
+  limits:
+    cpu: {{ .Values.amdSharedPoolCpuLimit | quote }}
