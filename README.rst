@@ -17,3 +17,11 @@
 
 CI Infrastructure for Apache Airflow
 ====================================
+
+RunsOn deployment
+-----------------
+
+`AIP-118 <https://cwiki.apache.org/confluence/spaces/AIRFLOW/pages/451974652>`_ selected
+`RunsOn <https://runs-on.com/>`_ for Airflow's self-hosted GitHub Actions runners. The Terraform
+module that creates its CloudFormation stack, and the runner presets, live in
+`terraform/runs-on <terraform/runs-on/README.rst>`_.
