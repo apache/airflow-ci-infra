@@ -12,3 +12,18 @@ github:
         - root
       restrict_deletion: true
       restrict_force_push: true
+  environments:
+    # Gates terraform apply of terraform/runs-on: the AWS apply role trusts only this environment.
+    runs-on-prod:
+      required_reviewers:
+        - id: potiuk
+          type: User
+        - id: shahar1
+          type: User
+      wait_timer: 0
+      prevent_self_review: true
+      deployment_branch_policy:
+        protected_branches: false
+        policies:
+          - name: main
+            type: branch

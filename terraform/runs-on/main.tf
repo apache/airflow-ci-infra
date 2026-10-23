@@ -24,10 +24,15 @@ data "aws_ssm_parameter" "license_key" {
   with_decryption = false
 }
 
+data "aws_caller_identity" "current" {}
+
 resource "aws_cloudformation_stack" "runs_on" {
   name         = var.stack_name
   template_url = "https://runs-on.s3.eu-west-1.amazonaws.com/cloudformation/template-${var.runs_on_version}.yaml"
   capabilities = ["CAPABILITY_IAM", "CAPABILITY_NAMED_IAM", "CAPABILITY_AUTO_EXPAND"]
+  # Service role from terraform/runs-on-access: CloudFormation acts as it, so the GitHub Actions
+  # apply role needs no infrastructure permissions. Once set, a stack keeps its role.
+  iam_role_arn = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/runs-on-cloudformation"
 
   # Everything not listed keeps the template default; the values match the stack validated on
   # 2026-09-25 (see the AIP-118 appendix) apart from the organization and the CIDR.

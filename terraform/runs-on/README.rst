@@ -88,7 +88,15 @@ for ``apache``.
 Step 2 — plan and apply
 -----------------------
 
-The state is in the S3 backend of ``state.tf``, locked with ``use_lockfile``::
+Changes go through pull requests. The ``Terraform (RunsOn)`` workflow
+(``.github/workflows/terraform-runs-on.yml``) plans every pull request that touches this
+directory, plans again on ``main`` after the merge, and applies that plan once a required reviewer
+approves the ``runs-on-prod`` environment. It authenticates with GitHub OIDC; the AWS roles it
+assumes, and the CloudFormation service role the stack runs as, are in
+`terraform/runs-on-access <../runs-on-access/README.rst>`_, which is applied by hand first.
+
+The state is in the S3 backend of ``state.tf``, locked with ``use_lockfile``. An account admin can
+still run the same steps locally::
 
     cd terraform/runs-on
     terraform init
@@ -100,8 +108,8 @@ The ``apache`` stack already exists: it was created on 2026-09-25 with local sta
 moved to S3 with ``terraform init -migrate-state``. A plan against it must therefore never propose
 to create the stack; if it does, Terraform is not reading the S3 state, and an apply would fail
 with ``AlreadyExistsException``. On a fresh account the plan shows exactly one resource to create
-(``aws_cloudformation_stack.runs_on``) and reads one data source (the SSM parameter). A future
-GitHub Actions workflow only needs an OIDC role, nothing secret.
+(``aws_cloudformation_stack.runs_on``) and reads two data sources (the SSM parameter and the
+caller identity).
 
 Step 3 — register the GitHub App and the presets
 ------------------------------------------------

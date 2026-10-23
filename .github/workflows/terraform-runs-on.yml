@@ -1,0 +1,109 @@
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+---
+# Plans terraform/runs-on on pull requests and on main; applies the plan made on main once a
+# required reviewer approves the runs-on-prod environment. The AWS roles live in
+# terraform/runs-on-access and are applied by hand.
+name: Terraform (RunsOn)
+
+on:  # yamllint disable-line rule:truthy
+  pull_request:
+    paths:
+      - "terraform/runs-on/**"
+      - ".github/workflows/terraform-runs-on.yml"
+  push:
+    branches: [main]
+    paths:
+      - "terraform/runs-on/**"
+      - ".github/workflows/terraform-runs-on.yml"
+
+permissions: {}
+
+concurrency:
+  group: terraform-runs-on-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  AWS_REGION: us-east-2
+  TF_IN_AUTOMATION: "true"
+  TF_INPUT: "false"
+
+jobs:
+  plan:
+    # Fork pull requests get no OIDC token, so they cannot plan.
+    if: >-
+      github.event_name == 'push' ||
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    defaults:
+      run:
+        working-directory: terraform/runs-on
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: aws-actions/configure-aws-credentials@e6de054238d6b7531b4efff3b6587d9aade6a06c  # v6.2.3
+        with:
+          role-to-assume: arn:aws:iam::827901512104:role/runs-on-terraform-plan
+          aws-region: ${{ env.AWS_REGION }}
+      - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e  # v4.0.1
+        with:
+          terraform_version: 1.16.2
+          terraform_wrapper: false
+      - run: terraform init -lockfile=readonly
+      # The plan role cannot write the lock file; apply takes the lock and refuses a stale plan.
+      - run: terraform plan -lock=false -out=runs-on.tfplan
+      - if: github.event_name == 'push'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          name: runs-on-tfplan
+          path: terraform/runs-on/runs-on.tfplan
+          retention-days: 1
+
+  apply:
+    needs: plan
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    # Required reviewers and the main-only branch policy come from .asf.yaml.
+    environment: runs-on-prod
+    permissions:
+      contents: read
+      id-token: write
+    defaults:
+      run:
+        working-directory: terraform/runs-on
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: aws-actions/configure-aws-credentials@e6de054238d6b7531b4efff3b6587d9aade6a06c  # v6.2.3
+        with:
+          role-to-assume: arn:aws:iam::827901512104:role/runs-on-terraform-apply
+          aws-region: ${{ env.AWS_REGION }}
+      - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e  # v4.0.1
+        with:
+          terraform_version: 1.16.2
+          terraform_wrapper: false
+      - run: terraform init -lockfile=readonly
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c  # v8.0.1
+        with:
+          name: runs-on-tfplan
+          path: terraform/runs-on
+      - run: terraform apply runs-on.tfplan
