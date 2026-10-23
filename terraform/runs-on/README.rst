@@ -37,8 +37,10 @@ Files
     The ``aws_cloudformation_stack`` resource, its parameters and the license-key lookup.
 ``variables.tf``
     All variables have defaults: ``stack_name`` (``runs-on``), ``github_organization``
-    (``apache``), ``alert_email`` (``shahar@apache.org``), ``runs_on_version`` (``v3.3.2``),
-    ``vpc_cidr`` (``10.2.0.0/16``) and ``region`` (``us-east-2``).
+    (``apache``), ``alert_email`` (``private@airflow.apache.org``), ``runs_on_version``
+    (``v3.3.2``), ``enable_admin_routes`` (``false``) and ``vpc_cidr`` (``10.2.0.0/16``). The
+    region (``us-east-2``) is not a variable: it is hard-coded in ``provider.tf``, the backend in
+    ``state.tf`` and the commands below, so a move changes all of them.
 ``state.tf``
     S3 backend ``airflow-ci-tfstate`` / ``tf-state/runs-on.tfstate`` (its own key next to the
     EKS states).
@@ -66,7 +68,19 @@ the only principal that decrypts it. Secrets Manager is not supported by the tem
 
 Use the default SSM KMS key (``alias/aws/ssm``): the template grants the stack's role access to
 that key; a customer key would need an extra key policy. Never put the key in ``terraform.tfvars``.
-Rotating the key is ``aws ssm put-parameter --overwrite`` followed by a stack update.
+Rotating the key does not go through Terraform: ``LicenseKey`` stays the same ARN, so an apply
+does not make the stack read the new value. The control-plane service reads the parameter itself,
+so overwrite it and restart the service:
+
+.. code-block:: bash
+
+    aws ssm put-parameter --region us-east-2 --name /runs-on/license-key \
+        --type SecureString --overwrite --value 'NEW-RUNS-ON-LICENSE-KEY'
+    service="$(aws cloudformation describe-stack-resource --region us-east-2 \
+        --stack-name runs-on --logical-resource-id RunsOnWorkerService \
+        --query StackResourceDetail.PhysicalResourceId --output text)"
+    aws ecs update-service --region us-east-2 --force-new-deployment \
+        --cluster "$(cut -d / -f 2 <<< "${service}")" --service "${service}"
 
 The free open-source license is issued per GitHub organization; the key must be the one issued
 for ``apache``.
@@ -74,26 +88,30 @@ for ``apache``.
 Step 2 — plan and apply
 -----------------------
 
-For the first, local run, keep the shared S3 state out of the way with a gitignored override::
+The state is in the S3 backend of ``state.tf``, locked with ``use_lockfile``::
 
     cd terraform/runs-on
-    printf 'terraform {\n  backend "local" {}\n}\n' > backend_override.tf
     terraform init
     terraform plan -out=runs-on.tfplan
-    terraform apply runs-on.tfplan          # ~10 minutes
+    terraform apply runs-on.tfplan          # ~10 minutes on creation
     terraform output
 
-The plan must show exactly one resource to create (``aws_cloudformation_stack.runs_on``) and read
-one data source (the SSM parameter). Delete ``backend_override.tf`` and run ``terraform init
--migrate-state`` to move the state to S3 once the future GitHub Actions workflow takes over;
-the workflow only needs an OIDC role, nothing secret.
+The ``apache`` stack already exists: it was created on 2026-09-25 with local state, which was then
+moved to S3 with ``terraform init -migrate-state``. A plan against it must therefore never propose
+to create the stack; if it does, Terraform is not reading the S3 state, and an apply would fail
+with ``AlreadyExistsException``. On a fresh account the plan shows exactly one resource to create
+(``aws_cloudformation_stack.runs_on``) and reads one data source (the SSM parameter). A future
+GitHub Actions workflow only needs an OIDC role, nothing secret.
 
 Step 3 — register the GitHub App and the presets
 ------------------------------------------------
 
-1. Open the ``entry_point`` output → **Register app**. This creates a private GitHub App in the
-   organization and installs it; for ``apache`` this is done together with ASF Infra, who also
-   grant the app access to ``apache/airflow`` and to ``.github-private`` if the presets live there.
+1. Apply with ``-var enable_admin_routes=true``, open the ``entry_point`` output → **Register
+   app**, then apply again without the variable to remove the ``/setup`` routes from the public
+   entry point. This creates a private GitHub App in the organization and installs it; for
+   ``apache`` this is done together with ASF Infra, who also grant the app access to
+   ``apache/airflow`` and to ``.github-private`` if the presets live there. Re-registering the
+   app needs the same temporary apply.
 2. Commit ``runs-on.yml.example`` as ``.github/runs-on.yml`` in ``apache/.github-private``
    (stack parameter ``RunnerConfigAutoExtendsFrom``, default ``.github-private``). RunsOn reads
    ``.github/runs-on.yml`` in a public repository **only from its default branch**, so presets
@@ -121,6 +139,12 @@ silently skip parameter changes). Minor and patch releases have no downtime; maj
 Rollback is the previous ``runs_on_version``. Template ``v3.3.2`` has SHA-256
 ``3017805d77c1d717fdd229a1e1242db12c985944699d3d8dca01f6f28b35c16d``.
 
+Every plan shows ``"LicenseKey" = "****" -> "arn:...:parameter/runs-on/license-key"``:
+CloudFormation masks ``NoEcho`` parameters when Terraform reads the stack, and the AWS provider
+stores the mask. The value sent on apply is the same ARN, so that line alone changes nothing. Do
+not add it to ``ignore_changes``: the provider would then send the literal ``****`` as the license
+key.
+
 ``prevent_destroy`` is set on the stack: a ``terraform destroy`` fails until the lifecycle block is
 removed on purpose. Deleting the stack also needs its cache bucket emptied first if CloudFormation
 stops on it.
@@ -130,10 +154,11 @@ What the stack contains
 
 VPC ``10.2.0.0/16`` with public and private subnets (``Private=false`` → runners get public IPs and
 no NAT, so each runner pulls from Docker Hub from its own address), an ECS Fargate service for the
-control plane, an API Gateway entry point (``/``, ``/setup``, ``/readyz`` only), an S3 cache bucket
-(``cache_bucket`` output; the runners' instance role can read and write the ``cache/`` prefix,
-lifecycle ``S3CacheExpirationInDays``), the EC2 instance role and launch templates, DynamoDB
-tables for locks and job tracking, an SNS alert topic, an AWS Budget (``AppBudgetDailyUsd``,
+control plane, an API Gateway entry point (``/github/webhooks``, plus ``/``, ``/setup`` and
+``/readyz`` only while ``enable_admin_routes`` is true), an S3 cache bucket (``cache_bucket``
+output; the runners' instance role can read and write the ``cache/`` prefix, lifecycle
+``S3CacheExpirationInDays``), the EC2 instance role and launch templates, DynamoDB tables for
+locks and job tracking, an SNS alert topic, an AWS Budget (``AppBudgetDailyUsd``,
 alert only — not a spending cap), the CloudWatch dashboard ``RunsOnDashboard-*`` (queue health,
 scheduling trend, queue-duration P50/P90, Spot circuit breaker), log groups
 ``/aws/ecs/<stack>/runs-on-worker`` and ``<stack>-EC2InstanceLogGroup-*``, and a daily cost report
@@ -154,9 +179,22 @@ Things learned in the validation
 
 - Runner instances use IMDSv2 with a hop limit of 2, so Docker containers started by a job can
   obtain the instance role's credentials. Tests that assume "no AWS credentials" must set
-  ``AWS_EC2_METADATA_DISABLED=true`` (fixed in ``apache/airflow#73707``).
-- Airflow's stash actions (image tars, mount caches, prek cache) were pointed at the stack's cache
-  bucket under ``cache/airflow-stash/``, so multi-gigabyte payloads never leave the region.
+  ``AWS_EC2_METADATA_DISABLED=true`` (fixed in ``apache/airflow#73707``). The same credentials
+  can read and write the whole ``cache/`` prefix, so any job on these runners can overwrite
+  objects that later runs download.
+- Untrusted code is meant to stay off these runners. Airflow's CI (``apache/airflow#74889``)
+  routes only pushes, schedules and dispatches on ``apache/airflow``, branches of
+  ``apache/airflow`` itself, and pull requests labelled ``use self-hosted runners`` that a
+  committer approved at their head commit to RunsOn; everything else runs on GitHub-hosted
+  runners. That routing is cooperative, not a boundary: a ``pull_request`` run uses the workflow
+  file of the pull request, so a fork can ask for a RunsOn label itself. The boundary is GitHub's
+  fork-workflow approval, which must be set to "Require approval for all external contributors"
+  for ``apache/airflow`` (ASF Infra).
+- Airflow's stash actions (image tars, mount caches, prek cache) store payloads in the stack's
+  cache bucket under ``cache/airflow-stash/``, so multi-gigabyte payloads never leave the region.
+  Payloads are content-addressed (``cache/airflow-stash/sha256/<digest>.tar``); the digest itself
+  is kept as a GitHub-scoped ASF stash, and a restore whose download does not match it is a cache
+  miss. Overwriting an object in the bucket therefore cannot change what a later run restores.
 - Job pickup (job queued → runner started) was 29 s at the median, 51 s at p90; a full
   ``Tests (AMD)`` graph finished in 53 minutes.
 - Magic cache (``extras=s3-cache``) was not enabled: it only speeds up ``actions/cache`` and

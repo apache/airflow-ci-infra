@@ -15,12 +15,6 @@
 # specific language governing permissions and limitations
 # under the License.
 
-variable "region" {
-  description = "AWS region for the RunsOn stack and its runners."
-  type        = string
-  default     = "us-east-2"
-}
-
 variable "stack_name" {
   description = <<-EOT
     CloudFormation stack name. RunsOn derives the license-key SSM parameter name from it
@@ -45,7 +39,16 @@ variable "github_organization" {
 variable "alert_email" {
   description = "Recipient of RunsOn cost reports and alerts; AWS sends an SNS confirmation email on creation."
   type        = string
-  default     = "shahar@apache.org"
+  default     = "private@airflow.apache.org"
+}
+
+variable "enable_admin_routes" {
+  description = <<-EOT
+    Expose the /setup admin routes on the public entry point. Set to true only while registering
+    (or re-registering) the GitHub App, then back to false.
+  EOT
+  type        = bool
+  default     = false
 }
 
 variable "vpc_cidr" {

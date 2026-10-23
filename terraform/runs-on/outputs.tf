@@ -26,9 +26,11 @@ output "cache_bucket" {
 }
 
 output "app_version" {
-  value = aws_cloudformation_stack.runs_on.outputs["RunsOnAppTag"]
+  description = "RunsOn application image tag running in the control plane."
+  value       = aws_cloudformation_stack.runs_on.outputs["RunsOnAppTag"]
 }
 
 output "service_log_group" {
-  value = aws_cloudformation_stack.runs_on.outputs["RunsOnServiceLogGroupName"]
+  description = "CloudWatch log group of the RunsOn control-plane service."
+  value       = aws_cloudformation_stack.runs_on.outputs["RunsOnServiceLogGroupName"]
 }

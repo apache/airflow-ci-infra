@@ -22,6 +22,6 @@ terraform {
       version = "~> 6.0"
     }
   }
-  # 1.10+ for S3-native state locking (use_lockfile)
-  required_version = ">= 1.10.0"
+  # S3-native state locking (use_lockfile) is GA from 1.11
+  required_version = ">= 1.11.0"
 }

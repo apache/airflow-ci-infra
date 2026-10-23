@@ -18,7 +18,8 @@
 # Credentials come from the environment (AWS_PROFILE locally, OIDC role in the
 # future GitHub Actions workflow) — do not hardcode a profile here.
 provider "aws" {
-  region = var.region
+  # Also hard-coded in the backend (state.tf) and the README commands; change all together.
+  region = "us-east-2"
 
   default_tags {
     tags = {

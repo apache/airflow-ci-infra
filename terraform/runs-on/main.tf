@@ -15,9 +15,6 @@
 # specific language governing permissions and limitations
 # under the License.
 
-data "aws_partition" "current" {}
-data "aws_caller_identity" "current" {}
-
 # The license key is never in Terraform state: RunsOn accepts LicenseKey as the ARN of an SSM
 # SecureString parameter that MUST be named /<stack name>/license-key, and only the stack's
 # service role decrypts it. The parameter is created by hand (see README.rst); this lookup
@@ -43,7 +40,7 @@ resource "aws_cloudformation_stack" "runs_on" {
     Private                 = "false" # runners get public IPs: no NAT cost, Docker Hub pulls per runner IP
     SSHAllowed              = "false"
     SSMAllowed              = "true"
-    EnableAdminRoutes       = "true" # /setup for the GitHub App registration
+    EnableAdminRoutes       = tostring(var.enable_admin_routes)
     EnableEphemeralRegistry = "false"
     RunnerMaxRuntime        = "720"
     S3CacheExpirationInDays = "10"
