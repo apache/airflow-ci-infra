@@ -89,11 +89,15 @@ Step 2 — plan and apply
 -----------------------
 
 Changes go through pull requests. The ``Terraform (RunsOn)`` workflow
-(``.github/workflows/terraform-runs-on.yml``) plans every pull request that touches this
-directory, plans again on ``main`` after the merge, and applies that plan once a required reviewer
-approves the ``runs-on-prod`` environment. The plan artifact is kept 7 days; if approval comes
-later, use "Re-run all jobs" on the run, which plans again. It authenticates with GitHub OIDC; the AWS roles it
-assumes, and the CloudFormation service role the stack runs as, are in
+(``.github/workflows/terraform-runs-on.yml``) runs only when this module's ``.tf`` files, its
+``.terraform.lock.hcl`` or the workflow file change; edits to this README or to
+``runs-on.yml.example`` do not trigger it. It plans such pull requests, plans again on ``main``
+after the merge, and applies that plan once a required reviewer approves the ``runs-on-prod``
+environment. The plan artifact is kept 7 days; if approval comes later, use "Re-run all jobs" on
+the run, which plans again. Do that only while the run is still the latest one on ``main``:
+re-running replays the original commit, so once a newer run has applied, re-running an older one
+plans a revert. The workflow authenticates with GitHub OIDC; the AWS roles it assumes, and the
+CloudFormation service role the stack runs as, are in
 `terraform/runs-on-access <../runs-on-access/README.rst>`_, which is applied by hand first.
 
 The state is in the S3 backend of ``state.tf``, locked with ``use_lockfile``. An account admin can
@@ -147,8 +151,10 @@ always resubmits the template URL, which is what RunsOn's `upgrade guide
 silently skip parameter changes). Minor and patch releases have no downtime; major releases may.
 Rollback is the previous ``runs_on_version``. The apply role may only deploy the templates listed
 in ``runs_on_versions`` in `terraform/runs-on-access <../runs-on-access/README.rst>`_, so a
-``runs_on_version`` bump first needs the new version added there and applied by an admin. Template ``v3.3.2`` has SHA-256
-``3017805d77c1d717fdd229a1e1242db12c985944699d3d8dca01f6f28b35c16d``.
+``runs_on_version`` bump first needs the new version added there and applied by an admin. For the
+same reason, rollback works only while the previous version is still listed: keep it during an
+upgrade (for example ``["v3.3.2", "v3.4.0"]``) and drop it later. Template ``v3.3.2`` has
+SHA-256 ``3017805d77c1d717fdd229a1e1242db12c985944699d3d8dca01f6f28b35c16d``.
 
 Every plan shows ``"LicenseKey" = "****" -> "arn:...:parameter/runs-on/license-key"``:
 CloudFormation masks ``NoEcho`` parameters when Terraform reads the stack, and the AWS provider

@@ -95,5 +95,6 @@ Bootstrap order
        terraform apply runs-on-access.tfplan
 
 5. The same admin applies ``terraform/runs-on`` once by hand, which sets ``iam_role_arn`` on the
-   stack (the workflow would only do it on the next push that touches ``terraform/runs-on``).
+   stack (the workflow would only do it on the next push that changes ``terraform/runs-on``'s
+   ``.tf`` files).
    From then on the workflow plans and applies.
