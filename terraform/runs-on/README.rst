@@ -91,7 +91,8 @@ Step 2 — plan and apply
 Changes go through pull requests. The ``Terraform (RunsOn)`` workflow
 (``.github/workflows/terraform-runs-on.yml``) plans every pull request that touches this
 directory, plans again on ``main`` after the merge, and applies that plan once a required reviewer
-approves the ``runs-on-prod`` environment. It authenticates with GitHub OIDC; the AWS roles it
+approves the ``runs-on-prod`` environment. The plan artifact is kept 7 days; if approval comes
+later, use "Re-run all jobs" on the run, which plans again. It authenticates with GitHub OIDC; the AWS roles it
 assumes, and the CloudFormation service role the stack runs as, are in
 `terraform/runs-on-access <../runs-on-access/README.rst>`_, which is applied by hand first.
 
@@ -144,7 +145,9 @@ Bump ``runs_on_version`` (or any parameter) and ``terraform plan`` / ``apply``: 
 always resubmits the template URL, which is what RunsOn's `upgrade guide
 <https://runs-on.com/docs/maintenance/upgrades/>`_ requires (a reused processed template can
 silently skip parameter changes). Minor and patch releases have no downtime; major releases may.
-Rollback is the previous ``runs_on_version``. Template ``v3.3.2`` has SHA-256
+Rollback is the previous ``runs_on_version``. The apply role may only deploy the templates listed
+in ``runs_on_versions`` in `terraform/runs-on-access <../runs-on-access/README.rst>`_, so a
+``runs_on_version`` bump first needs the new version added there and applied by an admin. Template ``v3.3.2`` has SHA-256
 ``3017805d77c1d717fdd229a1e1242db12c985944699d3d8dca01f6f28b35c16d``.
 
 Every plan shows ``"LicenseKey" = "****" -> "arn:...:parameter/runs-on/license-key"``:

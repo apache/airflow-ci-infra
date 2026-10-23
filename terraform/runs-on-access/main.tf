@@ -20,6 +20,10 @@ locals {
   stack_arn  = "arn:aws:cloudformation:us-east-2:${local.account_id}:stack/runs-on/*"
   state      = "arn:aws:s3:::airflow-ci-tfstate/tf-state/runs-on.tfstate"
 
+  # RunsOn releases the apply role may deploy; older published templates stay reachable otherwise.
+  # Upgrading RunsOn means adding the new version here and applying this module first.
+  runs_on_versions = ["v3.3.2"]
+
   # Immutable OIDC subject (owner and repository IDs next to their names), so a renamed or
   # re-created repository cannot match. Fork pull requests get no OIDC token at all, and the
   # runs-on-prod environment deploys only from main after a required reviewer approves (.asf.yaml).
@@ -94,11 +98,17 @@ data "aws_iam_policy_document" "read" {
     resources = ["arn:aws:ssm:us-east-2:${local.account_id}:parameter/runs-on/license-key"]
   }
   # The aws/ssm key policy lets any principal in the account decrypt through SSM, so
-  # GetParameter alone would also return the plain license key. Terraform never asks for it.
+  # GetParameter alone would also return the plain license key. Terraform never asks for it. The
+  # deny is limited to SSM so an SSE-KMS state bucket would stay readable.
   statement {
     effect    = "Deny"
     actions   = ["kms:Decrypt"]
     resources = ["*"]
+    condition {
+      test     = "StringEquals"
+      variable = "kms:ViaService"
+      values   = ["ssm.us-east-2.amazonaws.com"]
+    }
   }
   statement {
     actions   = ["s3:ListBucket"]
@@ -130,10 +140,18 @@ data "aws_iam_policy_document" "apply" {
     actions   = ["cloudformation:UpdateStack"]
     resources = [local.stack_arn]
     condition {
-      test     = "StringLike"
+      test     = "StringEquals"
       variable = "cloudformation:TemplateUrl"
-      values   = ["https://runs-on.s3.eu-west-1.amazonaws.com/cloudformation/template-v*.yaml"]
+      values = [
+        for v in local.runs_on_versions :
+        "https://runs-on.s3.eu-west-1.amazonaws.com/cloudformation/template-${v}.yaml"
+      ]
     }
+  }
+  # The provider sends the default tags on every UpdateStack.
+  statement {
+    actions   = ["cloudformation:TagResource", "cloudformation:UntagResource"]
+    resources = [local.stack_arn]
   }
   statement {
     actions   = ["iam:PassRole"]
@@ -195,6 +213,23 @@ data "aws_iam_policy_document" "cloudformation_guardrails" {
       "iam:Set*", "iam:Tag*", "iam:Untag*", "iam:Update*", "iam:Upload*",
     ]
     not_resources = local.stack_iam_resources
+  }
+  # Stack parameters (AppCustomPolicy, RunnerCustomPolicy) can attach any managed policy to the
+  # stack's own roles, which the IAM deny above exempts. The template itself attaches only these
+  # two.
+  statement {
+    sid       = "OnlyTheTemplateManagedPolicies"
+    effect    = "Deny"
+    actions   = ["iam:AttachRolePolicy"]
+    resources = ["*"]
+    condition {
+      test     = "ArnNotEquals"
+      variable = "iam:PolicyARN"
+      values = [
+        "arn:aws:iam::aws:policy/AmazonSSMManagedEC2InstanceDefaultPolicy",
+        "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy",
+      ]
+    }
   }
   statement {
     sid       = "NoRoleHopping"

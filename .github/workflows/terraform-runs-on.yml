@@ -22,13 +22,17 @@ name: Terraform (RunsOn)
 
 on:  # yamllint disable-line rule:truthy
   pull_request:
+    # README and example edits must not request an apply; -detailed-exitcode cannot filter no-op
+    # plans because every plan shows the masked LicenseKey diff (see terraform/runs-on/README.rst).
     paths:
-      - "terraform/runs-on/**"
+      - "terraform/runs-on/*.tf"
+      - "terraform/runs-on/.terraform.lock.hcl"
       - ".github/workflows/terraform-runs-on.yml"
   push:
     branches: [main]
     paths:
-      - "terraform/runs-on/**"
+      - "terraform/runs-on/*.tf"
+      - "terraform/runs-on/.terraform.lock.hcl"
       - ".github/workflows/terraform-runs-on.yml"
 
 permissions: {}
@@ -75,7 +79,7 @@ jobs:
         with:
           name: runs-on-tfplan
           path: terraform/runs-on/runs-on.tfplan
-          retention-days: 1
+          retention-days: 7
 
   apply:
     needs: plan
