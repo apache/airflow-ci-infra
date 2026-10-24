@@ -1,0 +1,66 @@
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+---
+# RunsOn runner presets for the Airflow CI size classes, as `.github/runs-on.yml`.
+#
+# RunsOn reads this file only from a public repository's default branch, or from the
+# organisation's `.github-private` repository (stack parameter RunnerConfigAutoExtendsFrom).
+# The 2026-09-25 validation could not use presets for that reason and spelled the same values
+# out in job labels instead; with presets in place a job label becomes
+# `runs-on=${{ github.run_id }}/runner=airflow-amd-medium`.
+#
+# Classes are the EC2 equivalents of the measured EKS classes (AIP-118 appendix):
+# small 4 vCPU / 16 GB, medium 8 / 32, xl 32 / 128. The xl class gets 128 GB because xdist
+# parallelism follows the host's 32 vCPUs. Spot is RunsOn's default (automatic rerun on
+# interruption); `volume` replaces the GitHub-hosted runners' root + /mnt disks.
+runners:
+  airflow-amd-small:
+    cpu: 4
+    ram: 16
+    family: ["m7a", "m7i", "m6a", "m6i"]
+    image: ubuntu22-full-x64
+    volume: 150gb
+  airflow-amd-medium:
+    cpu: 8
+    ram: 32
+    family: ["m7a", "m7i", "m6a", "m6i"]
+    image: ubuntu22-full-x64
+    volume: 150gb
+  airflow-amd-xl:
+    cpu: 32
+    ram: 128
+    family: ["m7a", "m7i", "m6a", "m6i"]
+    image: ubuntu22-full-x64
+    volume: 150gb
+  airflow-arm-small:
+    cpu: 4
+    ram: 16
+    family: ["m8g", "m7g", "m6g"]
+    image: ubuntu22-full-arm64
+    volume: 150gb
+  airflow-arm-medium:
+    cpu: 8
+    ram: 32
+    family: ["m8g", "m7g", "m6g"]
+    image: ubuntu22-full-arm64
+    volume: 150gb
+  airflow-arm-xl:
+    cpu: 32
+    ram: 128
+    family: ["m8g", "m7g", "m6g"]
+    image: ubuntu22-full-arm64
+    volume: 150gb
