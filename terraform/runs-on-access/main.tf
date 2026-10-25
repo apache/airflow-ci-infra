@@ -24,17 +24,18 @@ locals {
   # Upgrading RunsOn means adding the new version here and applying this module first.
   runs_on_versions = ["v3.3.2"]
 
-  # Immutable OIDC subject (owner and repository IDs next to their names), so a renamed or
-  # re-created repository cannot match. Fork pull requests get no OIDC token at all, and the
-  # runs-on-prod environment deploys only from main after a required reviewer approves (.asf.yaml).
-  #
-  # TEMPORARY (INFRA-28572): the repository is not opted into immutable subjects yet, so its tokens
-  # carry the default subject and the roles trust both forms. Once INFRA enables the setting, drop
-  # "repo:apache/airflow-ci-infra" from github_subject_prefixes and apply this module by hand
-  # (README, "Switching to the immutable subject").
+  # The repository is pinned by its immutable IDs (repository_owner_id and repository_id claims),
+  # so a renamed or re-created repository cannot match. Fork pull requests get no OIDC token at all,
+  # and the runs-on-prod environment deploys only from main after a required reviewer approves
+  # (.asf.yaml).
+  github_owner_id      = "47359"
+  github_repository_id = "321691041"
+  # Both subject forms are accepted: the default one the repository emits today and the immutable
+  # one it emits once INFRA-28572 opts it in. Dropping the default form afterwards is optional
+  # cleanup (README, "Switching to the immutable subject").
   github_subject_prefixes = [
     "repo:apache/airflow-ci-infra",
-    "repo:apache@47359/airflow-ci-infra@321691041",
+    "repo:apache@${local.github_owner_id}/airflow-ci-infra@${local.github_repository_id}",
   ]
   github_subjects = {
     plan = flatten([
@@ -84,6 +85,16 @@ data "aws_iam_policy_document" "github_trust" {
       test     = "StringEquals"
       variable = "token.actions.githubusercontent.com:sub"
       values   = each.value
+    }
+    condition {
+      test     = "StringEquals"
+      variable = "token.actions.githubusercontent.com:repository_owner_id"
+      values   = [local.github_owner_id]
+    }
+    condition {
+      test     = "StringEquals"
+      variable = "token.actions.githubusercontent.com:repository_id"
+      values   = [local.github_repository_id]
     }
   }
 }
