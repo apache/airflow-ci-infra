@@ -24,13 +24,24 @@ locals {
   # Upgrading RunsOn means adding the new version here and applying this module first.
   runs_on_versions = ["v3.3.2"]
 
-  # Immutable OIDC subject (owner and repository IDs next to their names), so a renamed or
-  # re-created repository cannot match. Fork pull requests get no OIDC token at all, and the
-  # runs-on-prod environment deploys only from main after a required reviewer approves (.asf.yaml).
-  github_subject = "repo:apache@47359/airflow-ci-infra@321691041"
+  # The repository is pinned by its immutable IDs (repository_owner_id and repository_id claims),
+  # so a renamed or re-created repository cannot match. Fork pull requests get no OIDC token at all,
+  # and the runs-on-prod environment deploys only from main after a required reviewer approves
+  # (.asf.yaml).
+  github_owner_id      = "47359"
+  github_repository_id = "321691041"
+  # Both subject forms are accepted: the default one the repository emits today and the immutable
+  # one it emits once INFRA-28572 opts it in. Dropping the default form afterwards is optional
+  # cleanup (README, "Switching to the immutable subject").
+  github_subject_prefixes = [
+    "repo:apache/airflow-ci-infra",
+    "repo:apache@${local.github_owner_id}/airflow-ci-infra@${local.github_repository_id}",
+  ]
   github_subjects = {
-    plan  = ["${local.github_subject}:pull_request", "${local.github_subject}:ref:refs/heads/main"]
-    apply = ["${local.github_subject}:environment:runs-on-prod"]
+    plan = flatten([
+      for s in local.github_subject_prefixes : ["${s}:pull_request", "${s}:ref:refs/heads/main"]
+    ])
+    apply = [for s in local.github_subject_prefixes : "${s}:environment:runs-on-prod"]
   }
 
   # IAM names the RunsOn template generates for the runs-on stack: <stack>-<logical id>-<suffix>.
@@ -74,6 +85,16 @@ data "aws_iam_policy_document" "github_trust" {
       test     = "StringEquals"
       variable = "token.actions.githubusercontent.com:sub"
       values   = each.value
+    }
+    condition {
+      test     = "StringEquals"
+      variable = "token.actions.githubusercontent.com:repository_owner_id"
+      values   = [local.github_owner_id]
+    }
+    condition {
+      test     = "StringEquals"
+      variable = "token.actions.githubusercontent.com:repository_id"
+      values   = [local.github_repository_id]
     }
   }
 }

@@ -28,6 +28,9 @@ on:  # yamllint disable-line rule:truthy
       - "terraform/runs-on/*.tf"
       - "terraform/runs-on/.terraform.lock.hcl"
       - ".github/workflows/terraform-runs-on.yml"
+      # Pull requests only: a plan proves the plan role still admits pull requests after an account
+      # admin applied the changed trust policies by hand. On main the change needs no apply.
+      - "terraform/runs-on-access/*.tf"
   push:
     branches: [main]
     paths:

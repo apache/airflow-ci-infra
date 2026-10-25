@@ -55,16 +55,21 @@ Roles
     with a new logical-ID prefix fails its update with ``AccessDenied`` until the list in
     ``main.tf`` is extended.
 
-All trust policies use GitHub's immutable OIDC subject,
-``repo:apache@47359/airflow-ci-infra@321691041:...``, so a renamed or re-created repository
-cannot match them. The GitHub OIDC provider already exists in the account (it is shared with
-``apache/airflow``) and is only read here.
+All trust policies pin the repository by its immutable GitHub IDs (``repository_owner_id``
+``47359`` and ``repository_id`` ``321691041``), so a renamed or re-created repository cannot match
+them. They accept two forms of the ``sub`` claim: the default ``repo:apache/airflow-ci-infra:...``,
+which the repository emits today, and the immutable
+``repo:apache@47359/airflow-ci-infra@321691041:...``, which it emits once
+`INFRA-28572 <https://issues.apache.org/jira/browse/INFRA-28572>`_ opts it in; see
+`Switching to the immutable subject`_. The GitHub OIDC provider already exists in the account (it
+is shared with ``apache/airflow``) and is only read here.
 
 Bootstrap order
 ---------------
 
-1. A repository admin opts ``apache/airflow-ci-infra`` into immutable OIDC subjects (until then
-   both roles refuse the workflow):
+1. (Optional, pending INFRA-28572_.) A repository admin opts ``apache/airflow-ci-infra`` into
+   immutable OIDC subjects. The roles accept both subject forms and pin the repository by ID
+   either way, see `Switching to the immutable subject`_:
 
    .. code-block:: bash
 
@@ -98,3 +103,21 @@ Bootstrap order
    stack (the workflow would only do it on the next push that changes ``terraform/runs-on``'s
    ``.tf`` files).
    From then on the workflow plans and applies.
+
+Switching to the immutable subject
+----------------------------------
+
+The ID conditions already protect against a renamed or re-created repository, so this is cleanup,
+not a security fix. Once INFRA has enabled ``use_immutable_subject``
+(``gh api repos/apache/airflow-ci-infra/actions/oidc/customization/sub`` shows
+``sub_claim_prefix`` as ``repo:apache@47359/airflow-ci-infra@321691041``), the tokens change form at
+once and the roles keep working because they trust both. After one green pull-request plan and one
+green apply on ``main`` with the new form:
+
+1. Remove ``"repo:apache/airflow-ci-infra"`` from ``github_subject_prefixes`` in ``main.tf`` and
+   shorten the comment above it.
+2. Drop this section and the two-forms sentence above; make step 1 of the bootstrap order a plain
+   prerequisite again.
+3. An account admin applies this module by hand (``terraform plan`` shows only the two trust
+   policies changing in place). The pull-request plan check is green before that apply, because
+   both forms are still trusted; re-run it afterwards.
