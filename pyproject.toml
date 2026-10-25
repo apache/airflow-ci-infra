@@ -26,3 +26,11 @@ default_section = 'THIRDPARTY'
 # Need to be consistent with the exclude config defined in pre-commit-config.yaml
 skip = ['build','.tox','venv']
 profile = 'black'
+
+[tool.ruff]
+line-length = 110
+
+[tool.ruff.lint]
+# pycodestyle errors and warnings plus pyflakes, as flake8 ran them.
+select = ['E', 'W', 'F']
+ignore = ['E731']

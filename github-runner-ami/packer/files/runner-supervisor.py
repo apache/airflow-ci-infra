@@ -72,6 +72,7 @@ The order of operations is:
    then allow the termination lifecycle to continue
 
 """
+
 import ctypes
 import datetime
 import enum
@@ -614,7 +615,7 @@ class ProcessWatcher:
         check_call(['systemctl', 'stop', 'actions.runner', '--no-block'])
 
     def protect_from_scale_in(self, protect: bool = True):
-        """ Set (or unset) ProtectedFromScaleIn on our instance"""
+        """Set (or unset) ProtectedFromScaleIn on our instance"""
         if not OWN_ASG:
             # Not part of an ASG
             return
@@ -723,7 +724,7 @@ class ProcessWatcher:
         """
 
         class bpf_insn(ctypes.Structure):
-            """"The BPF instruction data structure"""
+            """The BPF instruction data structure"""
 
             _fields_ = [
                 ("code", ctypes.c_ushort),
@@ -733,7 +734,7 @@ class ProcessWatcher:
             ]
 
         class bpf_program(ctypes.Structure):
-            """"Structure for BIOCSETF"""
+            """Structure for BIOCSETF"""
 
             _fields_ = [("bf_len", ctypes.c_uint), ("bf_insns", ctypes.POINTER(bpf_insn))]
 
