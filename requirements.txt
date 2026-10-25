@@ -16,12 +16,12 @@
 # under the License.
 
 boto3
-click~=7.1
+click~=8.5
 chalice
 pygithub
-pytest~=6.0
+pytest~=9.1
 python-dynamodb-lock-whatnick~=0.9.3
 psutil
 rich-click
 requests
-tenacity~=6.0
+tenacity~=9.2
