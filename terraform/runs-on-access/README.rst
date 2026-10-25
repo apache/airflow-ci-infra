@@ -55,16 +55,20 @@ Roles
     with a new logical-ID prefix fails its update with ``AccessDenied`` until the list in
     ``main.tf`` is extended.
 
-All trust policies use GitHub's immutable OIDC subject,
+All trust policies are meant to use GitHub's immutable OIDC subject,
 ``repo:apache@47359/airflow-ci-infra@321691041:...``, so a renamed or re-created repository
-cannot match them. The GitHub OIDC provider already exists in the account (it is shared with
-``apache/airflow``) and is only read here.
+cannot match them. **Temporarily** (`INFRA-28572 <https://issues.apache.org/jira/browse/INFRA-28572>`_)
+they also accept the default subject ``repo:apache/airflow-ci-infra:...``, because the repository
+is not opted into immutable subjects yet and its tokens carry the default form; see
+`Switching to the immutable subject`_. The GitHub OIDC provider already exists in the account (it
+is shared with ``apache/airflow``) and is only read here.
 
 Bootstrap order
 ---------------
 
-1. A repository admin opts ``apache/airflow-ci-infra`` into immutable OIDC subjects (until then
-   both roles refuse the workflow):
+1. (Pending, INFRA-28572_.) A repository
+   admin opts ``apache/airflow-ci-infra`` into immutable OIDC subjects; until that happens the
+   roles trust the default subject as well, see `Switching to the immutable subject`_:
 
    .. code-block:: bash
 
@@ -98,3 +102,17 @@ Bootstrap order
    stack (the workflow would only do it on the next push that changes ``terraform/runs-on``'s
    ``.tf`` files).
    From then on the workflow plans and applies.
+
+Switching to the immutable subject
+----------------------------------
+
+Once INFRA has enabled ``use_immutable_subject`` (check with
+``gh api repos/apache/airflow-ci-infra/actions/oidc/customization/sub``), the tokens change to
+the immutable form at once; the roles keep working because they trust both. Then:
+
+1. Remove ``"repo:apache/airflow-ci-infra"`` from ``github_subject_prefixes`` in ``main.tf`` and
+   delete the ``TEMPORARY`` comment above it, so only the immutable subject remains.
+2. Drop this section and the "Temporarily" sentence above, and restore step 1 of the bootstrap
+   order to its original wording.
+3. An account admin applies this module by hand (``terraform plan`` shows only the two trust
+   policies changing in place).
