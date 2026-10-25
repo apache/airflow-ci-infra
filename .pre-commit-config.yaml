@@ -15,7 +15,7 @@
 # specific language governing permissions and limitations
 # under the License.
 ---
-default_stages: [commit, push]
+default_stages: [pre-commit, pre-push]
 default_language_version:
   # force all unspecified python hooks to run python3
   python: python3
@@ -26,12 +26,14 @@ repos:
       - id: identity
       - id: check-hooks-apply
   - repo: https://github.com/Lucas-C/pre-commit-hooks
-    rev: v1.1.9
+    rev: v1.5.6
     hooks:
       - id: forbid-tabs
       - id: insert-license
         name: Add license
-        exclude: ^\.github/.*$|^license-templates/|\.json$
+        # LICENSE is the license itself, lock files are generated, and cloud-init.yml must start with
+        # #cloud-config.
+        exclude: ^\.github/.*$|^license-templates/|\.json$|\.md$|\.rst$|^LICENSE$|\.terraform\.lock\.hcl$|^cloud-init\.yml$
         args:
           - --comment-style
           - "|#|"
@@ -48,13 +50,23 @@ repos:
           - license-templates/LICENSE.rst
           - --fuzzy-match-generates-todo
         files: \.rst$
+      - id: insert-license
+        name: Add license for all Markdown files
+        exclude: ^\.github/.*$
+        args:
+          - --comment-style
+          - "<!--|| -->"
+          - --license-filepath
+          - license-templates/LICENSE.txt
+          - --fuzzy-match-generates-todo
+        files: \.md$
   - repo: https://github.com/psf/black
-    rev: 20.8b1
+    rev: 26.10.1
     hooks:
       - id: black
         args: [--config=./pyproject.toml]
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v3.4.0
+    rev: v6.0.0
     hooks:
       - id: check-merge-conflict
       - id: debug-statements
@@ -63,29 +75,31 @@ repos:
       - id: end-of-file-fixer
       - id: mixed-line-ending
       - id: trailing-whitespace
-      - id: fix-encoding-pragma
-        args:
-          - --remove
   - repo: https://github.com/asottile/pyupgrade
-    rev: v2.7.4
+    rev: v3.22.0
     hooks:
       - id: pyupgrade
         args: ["--py36-plus"]
   - repo: https://github.com/pre-commit/pygrep-hooks
-    rev: v1.7.0
+    rev: v1.10.0
     hooks:
       - id: rst-backticks
       - id: python-no-log-warn
-  - repo: https://github.com/timothycrosley/isort
-    rev: 5.7.0
+  - repo: https://github.com/PyCQA/isort
+    rev: 9.0.2
     hooks:
       - id: isort
         name: Run isort to sort imports
         files: \.py$
         # To keep consistent with the global isort skip config defined in setup.cfg
         exclude: ^build/.*$|^.tox/.*$|^venv/.*$
-  - repo: https://gitlab.com/pycqa/flake8
-    rev: 3.8.4
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.17.2
     hooks:
-      - id: flake8
-        name: Run flake8
+      - id: ruff-check
+        name: Run ruff
+  - repo: https://github.com/zizmorcore/zizmor-pre-commit
+    rev: v1.31.1
+    hooks:
+      - id: zizmor
+        name: Run zizmor on GitHub Actions workflows

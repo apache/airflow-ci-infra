@@ -21,12 +21,17 @@ import rich_click as click
 from github import Github
 
 from rich.console import Console
+
 console = Console(color_system="standard", width=200)
 
+
 @click.command(short_help='List committer logins - used to sync list of committers in CI configuration')
-@click.option('--github-token', envvar='GITHUB_TOKEN',
-              help="You can generate the token with readOrg permissions: "
-                   "https://github.com/settings/tokens/new?description=Read%20Org&scopes=read:org")
+@click.option(
+    '--github-token',
+    envvar='GITHUB_TOKEN',
+    help="You can generate the token with readOrg permissions: "
+    "https://github.com/settings/tokens/new?description=Read%20Org&scopes=read:org",
+)
 def main(github_token):
     gh = Github(github_token)
     org = gh.get_organization('apache')
@@ -37,7 +42,8 @@ def main(github_token):
     click.echo(" - update the `/runners/apache/airflow/configOverlay` parameter in AWS SSM ParameterStore")
     click.echo(" - restart the self-hosted runners")
     click.echo(
-        " - Inform the new committer, that it's time to open PR to update list of committers in dev/breeze/src/airflow_breeze/global_constants.py (COMMITTERS variable)"
+        " - Inform the new committer, that it's time to open PR to update list of committers in "
+        "dev/breeze/src/airflow_breeze/global_constants.py (COMMITTERS variable)"
     )
     click.echo(',\n'.join(committer_usernames))
     click.echo("""
@@ -53,7 +59,7 @@ AWS spot instances that are started on-demand.
 Those instances are way bigger than the Public Runners available for all ASF
 projects. They have 8 cores and 64 GB memory and all the builds happen
 in-memory, and our builds are optimized to use parallelism and memory so that
-often what you will get is 3-4 times speed-up vs the Public instances. 
+often what you will get is 3-4 times speed-up vs the Public instances.
 
 We currently have up to 35 such instances running at a time, so there is a
 possibility - if there are many committers pushing their changes in a short
