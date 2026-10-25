@@ -98,3 +98,8 @@ repos:
     hooks:
       - id: ruff-check
         name: Run ruff
+  - repo: https://github.com/zizmorcore/zizmor-pre-commit
+    rev: v1.31.1
+    hooks:
+      - id: zizmor
+        name: Run zizmor on GitHub Actions workflows
