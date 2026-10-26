@@ -187,6 +187,11 @@ Observability
 - CloudWatch dashboard and log groups above; ``roc`` CLI (`docs
   <https://runs-on.com/docs/observability/cli/>`_): ``roc stack doctor``, ``roc stack logs``,
   ``roc logs <job url> --watch``, ``roc connect <job url>`` over SSM (``SSMAllowed=true``).
+- ``.github/workflows/runs-on-usage-report.yml`` checks every Monday how much of the last week's
+  EC2 vCPU-hours in us-east-2 ran on on-demand instances. Above 30% it keeps one issue open in
+  this repository and comments each week's numbers on it, and it closes the issue once the share
+  is back under. The numbers are account-wide (``AWS/Usage`` metrics), so any other EC2
+  instances in the region count too.
 - Optional OTLP export (``OtelExporterEndpoint`` / ``OtelExporterHeaders`` + ``extras=otel`` on the
   label) to SigNoz or any OTLP backend; RunsOn publishes a SigNoz dashboard. Not deployed by
   the stack.

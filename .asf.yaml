@@ -16,6 +16,9 @@
 # under the License.
 
 github:
+  features:
+    # .github/workflows/runs-on-usage-report.yml keeps its on-demand share warning in an issue.
+    issues: true
   rulesets:
     - name: "Default Branch Protection"
       type: branch

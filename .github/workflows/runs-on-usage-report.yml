@@ -1,0 +1,103 @@
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+---
+# Weekly check of how much of the account's EC2 vCPU usage in us-east-2 ran on on-demand instead of
+# Spot. Above the threshold it keeps one issue open and comments the week's numbers on it; once the
+# share is back under the threshold it closes the issue. The AWS role is runs-on-usage-report from
+# terraform/runs-on-access.
+name: RunsOn on-demand share
+
+on:  # yamllint disable-line rule:truthy
+  schedule:
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: runs-on-usage-report
+
+jobs:
+  report:
+    if: github.repository == 'apache/airflow-ci-infra'
+    runs-on: ubuntu-24.04
+    permissions:
+      id-token: write
+      issues: write
+    steps:
+      - uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd  # v6.3.0
+        with:
+          role-to-assume: arn:aws:iam::827901512104:role/runs-on-usage-report
+          aws-region: us-east-2
+      - name: Report the on-demand share of the last 7 days
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          THRESHOLD_PERCENT: "30"
+          ISSUE_TITLE: "RunsOn runners ran on on-demand instances for more than 30% of their vCPU-hours"
+        run: |
+          end=$(date -u +%Y-%m-%dT%H:00:00Z)
+          start=$(date -u -d "${end} - 7 days" +%Y-%m-%dT%H:00:00Z)
+          # The hourly average of the vCPUs in use is the vCPU-hours of that hour; hours without
+          # any instance of a class have no datapoint.
+          query() {
+            jq -nc --arg id "$1" --arg class "$2" '{Id: $id, MetricStat: {Metric: {
+              Namespace: "AWS/Usage", MetricName: "ResourceCount", Dimensions: [
+                {Name: "Service", Value: "EC2"}, {Name: "Type", Value: "Resource"},
+                {Name: "Resource", Value: "vCPU"}, {Name: "Class", Value: $class}]},
+              Period: 3600, Stat: "Average"}}'
+          }
+          queries="[$(query ondemand Standard/OnDemand),$(query spot Standard/Spot)]"
+          # A command substitution, so that a failed call fails the job instead of reading as zero.
+          data=$(aws cloudwatch get-metric-data --start-time "${start}" --end-time "${end}" \
+            --metric-data-queries "${queries}" --output json)
+          incomplete=$(jq -r '[.MetricDataResults[] | select(.StatusCode != "Complete") | .Id]
+            | join(" ")' <<< "${data}")
+          if [[ -n "${incomplete}" ]] || [[ $(jq '.MetricDataResults | length' <<< "${data}") != 2 ]]; then
+            echo "::error::Incomplete CloudWatch results (${incomplete:-missing queries})"
+            exit 1
+          fi
+          read -r on_demand spot <<< "$(jq -r '.MetricDataResults
+            | map({(.Id): (.Values | add // 0 | round)}) | add | "\(.ondemand) \(.spot)"' <<< "${data}")"
+          if (( on_demand + spot == 0 )); then
+            echo "::error::No EC2 vCPU usage found between ${start} and ${end}"
+            exit 1
+          fi
+          share=$(( 100 * on_demand / (on_demand + spot) ))
+          summary="From ${start} to ${end}: ${on_demand} on-demand and ${spot} Spot vCPU-hours,"
+          summary+=" ${share}% on-demand (threshold ${THRESHOLD_PERCENT}%)."
+          echo "${summary}" | tee -a "${GITHUB_STEP_SUMMARY}"
+
+          issue=$(gh issue list --state open --search "\"${ISSUE_TITLE}\" in:title" \
+            --json number,title --jq ".[] | select(.title == \"${ISSUE_TITLE}\") | .number" | head -1)
+          # Compared without the rounding of the displayed share, which 30.5% would hide.
+          if (( 100 * on_demand > THRESHOLD_PERCENT * (on_demand + spot) )); then
+            if [[ -n "${issue}" ]]; then
+              gh issue comment "${issue}" --body "${summary}"
+            else
+              gh issue create --title "${ISSUE_TITLE}" --body "${summary}
+
+          The RunsOn stack launches Spot first and falls back to on-demand when Spot capacity is
+          short or while its Spot circuit breaker is open (\`SpotCircuitBreaker\` in
+          \`terraform/runs-on/main.tf\`). On-demand instances cost more and count against the
+          smaller on-demand vCPU quota, so jobs queue once it is full. The RunsOn CloudWatch
+          dashboard shows the circuit breaker state. This issue gets a comment every week while the
+          share stays above ${THRESHOLD_PERCENT}%, and is closed once it is back under."
+            fi
+          elif [[ -n "${issue}" ]]; then
+            gh issue close "${issue}" --comment "${summary}"
+          fi
