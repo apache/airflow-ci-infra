@@ -54,6 +54,10 @@ Roles
     needs that list extended here first. A template release that adds an IAM resource
     with a new logical-ID prefix fails its update with ``AccessDenied`` until the list in
     ``main.tf`` is extended.
+``runs-on-usage-report``
+    Assumed through GitHub OIDC by workflows running on ``main`` of ``apache/airflow-ci-infra``,
+    for the weekly ``.github/workflows/runs-on-usage-report.yml``. It can only call
+    ``cloudwatch:GetMetricData``, to compare the account's on-demand and Spot vCPU usage.
 
 All trust policies pin the repository by its immutable GitHub IDs (``repository_owner_id``
 ``47359`` and ``repository_id`` ``321691041``), so a renamed or re-created repository cannot match
@@ -96,7 +100,7 @@ Bootstrap order
 
        cd terraform/runs-on-access
        terraform init
-       terraform plan -out=runs-on-access.tfplan   # 3 roles and their policies, nothing else
+       terraform plan -out=runs-on-access.tfplan   # 4 roles and their policies, nothing else
        terraform apply runs-on-access.tfplan
 
 5. The same admin applies ``terraform/runs-on`` once by hand, which sets ``iam_role_arn`` on the

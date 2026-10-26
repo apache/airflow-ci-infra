@@ -43,6 +43,8 @@ locals {
     ])
     apply = [for s in local.github_subject_prefixes : "${s}:environment:runs-on-prod"]
   }
+  # The weekly report runs on a schedule, so only main.
+  usage_report_subjects = [for s in local.github_subject_prefixes : "${s}:ref:refs/heads/main"]
 
   # IAM names the RunsOn template generates for the runs-on stack: <stack>-<logical id>-<suffix>.
   # Matching the logical-ID prefixes rather than "runs-on-*" keeps every other role in the account,
@@ -68,7 +70,7 @@ data "aws_iam_openid_connect_provider" "github" {
 }
 
 data "aws_iam_policy_document" "github_trust" {
-  for_each = local.github_subjects
+  for_each = merge(local.github_subjects, { usage-report = local.usage_report_subjects })
 
   statement {
     actions = ["sts:AssumeRoleWithWebIdentity"]
@@ -197,6 +199,27 @@ resource "aws_iam_role_policy" "apply" {
   name   = "terraform-apply"
   role   = aws_iam_role.terraform["apply"].name
   policy = data.aws_iam_policy_document.apply.json
+}
+
+# Read-only role for .github/workflows/runs-on-usage-report.yml, which compares the account's
+# on-demand and Spot vCPU usage. GetMetricData has no resource-level permissions.
+resource "aws_iam_role" "usage_report" {
+  name               = "runs-on-usage-report"
+  description        = "Weekly on-demand share report of apache/airflow-ci-infra GitHub Actions"
+  assume_role_policy = data.aws_iam_policy_document.github_trust["usage-report"].json
+}
+
+data "aws_iam_policy_document" "usage_report" {
+  statement {
+    actions   = ["cloudwatch:GetMetricData"]
+    resources = ["*"]
+  }
+}
+
+resource "aws_iam_role_policy" "usage_report" {
+  name   = "usage-report"
+  role   = aws_iam_role.usage_report.name
+  policy = data.aws_iam_policy_document.usage_report.json
 }
 
 data "aws_iam_policy_document" "cloudformation_trust" {
