@@ -50,7 +50,9 @@ resource "aws_cloudformation_stack" "runs_on" {
     RunnerMaxRuntime        = "720"
     S3CacheExpirationInDays = "10"
     AppSize                 = "small"
-    SpotCircuitBreaker      = "2/15/30"
+    # With hundreds of runners two interruptions in 15 minutes are routine, so the default 2/15/30
+    # kept Spot off: on 2026-10-26 the stack ran 920 on-demand vCPUs against 48 on Spot.
+    SpotCircuitBreaker      = "30/15/10"
     CostReportsEnabled      = "daily"
     AppBudgetDailyUsd       = "10" # alert only, not a spending cap
   }
