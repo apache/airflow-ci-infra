@@ -32,6 +32,31 @@ github:
         - root
       restrict_deletion: true
       restrict_force_push: true
+    # A raw payload, because the convenience syntax can only name teams as bypass actors. The Write
+    # repository role (actor_id 4) bypasses it, so a maintainer can merge without a green prek. The
+    # Terraform plan is not required: it only runs when terraform/ changes. Deletion and force-push
+    # stay blocked by the ruleset above, which writers cannot bypass.
+    - name: "Require prek on main"
+      target: branch
+      enforcement: active
+      conditions:
+        ref_name:
+          include:
+            - "~DEFAULT_BRANCH"
+          exclude: []
+      bypass_actors:
+        - actor_id: 4
+          actor_type: RepositoryRole
+          bypass_mode: always
+      rules:
+        - type: required_status_checks
+          parameters:
+            strict_required_status_checks_policy: false
+            required_status_checks:
+              - context: "prek"
+  pull_requests:
+    # Auto-merge waits for the checks the "Require prek on main" ruleset requires.
+    allow_auto_merge: true
   environments:
     # Gates terraform apply of terraform/runs-on: the AWS apply role trusts only this environment.
     runs-on-prod:
