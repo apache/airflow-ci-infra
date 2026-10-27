@@ -38,7 +38,7 @@ Files
 ``variables.tf``
     All variables have defaults: ``stack_name`` (``runs-on``), ``github_organization``
     (``apache``), ``alert_email`` (``private@airflow.apache.org``), ``runs_on_version``
-    (``v3.3.2``), ``enable_admin_routes`` (``false``) and ``vpc_cidr`` (``10.2.0.0/16``). The
+    (``v3.5.1``), ``enable_admin_routes`` (``false``) and ``vpc_cidr`` (``10.2.0.0/16``). The
     region (``us-east-2``) is not a variable: it is hard-coded in ``provider.tf``, the backend in
     ``state.tf`` and the commands below, so a move changes all of them.
 ``state.tf``
@@ -153,8 +153,11 @@ Rollback is the previous ``runs_on_version``. The apply role may only deploy the
 in ``runs_on_versions`` in `terraform/runs-on-access <../runs-on-access/README.rst>`_, so a
 ``runs_on_version`` bump first needs the new version added there and applied by an admin. For the
 same reason, rollback works only while the previous version is still listed: keep it during an
-upgrade (for example ``["v3.3.2", "v3.4.0"]``) and drop it later. Template ``v3.3.2`` has
-SHA-256 ``3017805d77c1d717fdd229a1e1242db12c985944699d3d8dca01f6f28b35c16d``.
+upgrade (for example ``["v3.3.2", "v3.4.0"]``) and drop it later. Template SHA-256s:
+``v3.3.2`` ``3017805d77c1d717fdd229a1e1242db12c985944699d3d8dca01f6f28b35c16d``, ``v3.5.1``
+``9acd6fd154e2bb921f95466c45380d2e3d7bd718553a12af4e5c76d15915bd57``. Both templates create the
+same IAM roles, so the service role's guardrails in ``terraform/runs-on-access`` need no change
+for this upgrade.
 
 Every plan shows ``"LicenseKey" = "****" -> "arn:...:parameter/runs-on/license-key"``:
 CloudFormation masks ``NoEcho`` parameters when Terraform reads the stack, and the AWS provider
@@ -223,3 +226,28 @@ Things learned in the validation
   ``setup-*`` caches and requires ``runs-on/action`` before every ``upload-artifact``.
 - EC2 quotas in us-east-2 (``All Standard Spot Instance Requests`` 3000 vCPU, on-demand 2000)
   were enough for ~130 concurrent jobs.
+
+Spot capacity
+-------------
+
+On 2026-10-25..27 the stack launched 4706 Spot and 4038 on-demand runners. The worker log
+(``force_on_demand_reason`` on each "Using on-demand instances" line) gives the cause, and none
+of it was the Spot quota (peak 2332 of 3000 vCPU); the on-demand quota filled up instead
+(2004 of 2000 on 2026-10-26 16:00 UTC, 1653 ``VcpuLimitExceeded``):
+
+- ``spot_disabled`` (2641): the default ``SpotCircuitBreaker`` ``2/15/30`` kept Spot off; none
+  since the ``30/15/10`` apply on 2026-10-26 20:29 UTC.
+- ``force_on_demand`` (678): x64 Spot capacity misses. Up to v3.4 one miss sends every job to
+  on-demand for five minutes; from v3.5.0 only the affected runners go.
+- ``spot_recovery_rerun`` (719): RunsOn's rerun of an interrupted job, on-demand by design.
+
+Of 2156 Spot capacity errors in a day, 1959 were x64 (``m7a+m7i+m6a+m6i``) and 197 arm64.
+More instance families give the Spot allocator more pools, so the x64 presets in
+``runs-on.yml.example`` also allow ``m8a``, ``m8i``, ``m5a`` and ``m5`` (Spot ``2xlarge`` on
+2026-10-27: 0.08-0.16 USD/hour against 0.12-0.15 for the existing families). Jobs that spell
+the family out in their label (``apache/airflow`` workflows) need the same change there.
+
+The CloudFormation template places runners in two Availability Zones (us-east-2a and 2b,
+fixed by the template). RunsOn's Spot spread across zones (``RUNS_ON_SPOT_FORCE_ZONE_SPREAD``,
+v3.5.0 beta) and custom subnets exist only in its Terraform module, so a third zone means
+moving off the CloudFormation stack.
