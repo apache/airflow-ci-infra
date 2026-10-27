@@ -149,9 +149,10 @@ Bump ``runs_on_version`` (or any parameter) and ``terraform plan`` / ``apply``: 
 always resubmits the template URL, which is what RunsOn's `upgrade guide
 <https://runs-on.com/docs/maintenance/upgrades/>`_ requires (a reused processed template can
 silently skip parameter changes). Minor and patch releases have no downtime; major releases may.
-Rollback is the previous ``runs_on_version``. The apply role may deploy any versioned template from
-RunsOn's bucket (``template-v*.yaml``, `terraform/runs-on-access <../runs-on-access/README.rst>`_)
-and ``runs_on_version`` must look like ``v3.5.1``, so an upgrade or rollback needs no admin step.
+Rollback is the previous ``runs_on_version``. The apply role may deploy any release template from
+RunsOn's bucket (``template-vX.Y.Z.yaml``,
+`terraform/runs-on-access <../runs-on-access/README.rst>`_) and ``runs_on_version`` must look like
+``v3.5.1``, so an upgrade or rollback needs no admin step.
 What still needs an admin is IAM: the CloudFormation service role may only manage the IAM roles
 named in ``stack_role_prefixes`` and attach the two managed policies listed in
 ``terraform/runs-on-access``. Before a bump compare the new template's ``AWS::IAM::Role``,

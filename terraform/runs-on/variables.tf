@@ -29,9 +29,10 @@ variable "runs_on_version" {
   type        = string
   default     = "v3.5.1"
 
-  # The apply role may deploy only template-v*.yaml from RunsOn's bucket (terraform/runs-on-access).
+  # The apply role may deploy only release templates of this shape from RunsOn's bucket
+  # (runs_on_template_urls in terraform/runs-on-access).
   validation {
-    condition     = can(regex("^v[0-9]+\\.[0-9]+\\.[0-9]+$", var.runs_on_version))
+    condition     = can(regex("^v[0-9]\\.[0-9]{1,2}\\.[0-9]{1,2}$", var.runs_on_version))
     error_message = "runs_on_version must be a RunsOn release tag such as v3.5.1."
   }
 }
