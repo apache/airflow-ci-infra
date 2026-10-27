@@ -149,15 +149,16 @@ Bump ``runs_on_version`` (or any parameter) and ``terraform plan`` / ``apply``: 
 always resubmits the template URL, which is what RunsOn's `upgrade guide
 <https://runs-on.com/docs/maintenance/upgrades/>`_ requires (a reused processed template can
 silently skip parameter changes). Minor and patch releases have no downtime; major releases may.
-Rollback is the previous ``runs_on_version``. The apply role may only deploy the templates listed
-in ``runs_on_versions`` in `terraform/runs-on-access <../runs-on-access/README.rst>`_, so a
-``runs_on_version`` bump first needs the new version added there and applied by an admin. For the
-same reason, rollback works only while the previous version is still listed: keep it during an
-upgrade (for example ``["v3.3.2", "v3.4.0"]``) and drop it later. Template SHA-256s:
-``v3.3.2`` ``3017805d77c1d717fdd229a1e1242db12c985944699d3d8dca01f6f28b35c16d``, ``v3.5.1``
-``9acd6fd154e2bb921f95466c45380d2e3d7bd718553a12af4e5c76d15915bd57``. Both templates create the
-same IAM roles, so the service role's guardrails in ``terraform/runs-on-access`` need no change
-for this upgrade.
+Rollback is the previous ``runs_on_version``. The apply role may deploy any versioned template from
+RunsOn's bucket (``template-v*.yaml``, `terraform/runs-on-access <../runs-on-access/README.rst>`_)
+and ``runs_on_version`` must look like ``v3.5.1``, so an upgrade or rollback needs no admin step.
+What still needs an admin is IAM: the CloudFormation service role may only manage the IAM roles
+named in ``stack_role_prefixes`` and attach the two managed policies listed in
+``terraform/runs-on-access``. Before a bump compare the new template's ``AWS::IAM::Role``,
+``AWS::IAM::InstanceProfile`` and ``ManagedPolicyArns`` with those lists; anything new fails the
+stack update until an admin adds it there and applies that module.
+Template SHA-256s: ``v3.3.2`` ``3017805d77c1d717fdd229a1e1242db12c985944699d3d8dca01f6f28b35c16d``,
+``v3.5.1`` ``9acd6fd154e2bb921f95466c45380d2e3d7bd718553a12af4e5c76d15915bd57``.
 
 Every plan shows ``"LicenseKey" = "****" -> "arn:...:parameter/runs-on/license-key"``:
 CloudFormation masks ``NoEcho`` parameters when Terraform reads the stack, and the AWS provider
@@ -244,8 +245,12 @@ of it was the Spot quota (peak 2332 of 3000 vCPU); the on-demand quota filled up
 Of 2156 Spot capacity errors in a day, 1959 were x64 (``m7a+m7i+m6a+m6i``) and 197 arm64.
 More instance families give the Spot allocator more pools, so the x64 presets in
 ``runs-on.yml.example`` also allow ``m8a``, ``m8i``, ``m5a`` and ``m5`` (Spot ``2xlarge`` on
-2026-10-27: 0.08-0.16 USD/hour against 0.12-0.15 for the existing families). Jobs that spell
-the family out in their label (``apache/airflow`` workflows) need the same change there.
+2026-10-27: 0.08-0.16 USD/hour against 0.12-0.15 for the existing families). Since
+``apache/airflow#75822`` the jobs (which spell their labels out instead of using these presets)
+also take Spot from capacity-optimized pools (``spot=co``) and accept up to twice their size
+(``cpu=8+16/ram=32+64``). Capacity-optimized ignores price, so a job can land on the larger size
+at up to twice the hourly price; the weekly report and the daily cost report show whether the net
+cost goes down.
 
 The CloudFormation template places runners in two Availability Zones (us-east-2a and 2b,
 fixed by the template). RunsOn's Spot spread across zones (``RUNS_ON_SPOT_FORCE_ZONE_SPREAD``,

@@ -25,42 +25,67 @@
 #
 # Classes are the EC2 equivalents of the measured EKS classes (AIP-118 appendix):
 # small 4 vCPU / 16 GB, medium 8 / 32, xl 32 / 128. The xl class gets 128 GB because xdist
-# parallelism follows the host's 32 vCPUs. Spot is RunsOn's default (automatic rerun on
-# interruption); `volume` replaces the GitHub-hosted runners' root + /mnt disks.
+# parallelism follows the host's vCPUs. Each class also accepts up to twice its size, and Spot comes
+# from capacity-optimized pools (`spot: co`), as in the job labels of apache/airflow#75822; RunsOn
+# reruns an interrupted job on on-demand. `volume` replaces the GitHub-hosted runners' root + /mnt
+# disks.
 runners:
   airflow-amd-small:
-    cpu: 4
-    ram: 16
+    cpu: [4, 8]
+    ram: [16, 32]
     family: ["m8a", "m8i", "m7a", "m7i", "m6a", "m6i", "m5a", "m5"]
     image: ubuntu22-full-x64
     volume: 150gb
+    spot: co
   airflow-amd-medium:
-    cpu: 8
-    ram: 32
+    cpu: [8, 16]
+    ram: [32, 64]
     family: ["m8a", "m8i", "m7a", "m7i", "m6a", "m6i", "m5a", "m5"]
     image: ubuntu22-full-x64
     volume: 150gb
+    spot: co
   airflow-amd-xl:
-    cpu: 32
-    ram: 128
+    cpu: [32, 64]
+    ram: [128, 256]
     family: ["m8a", "m8i", "m7a", "m7i", "m6a", "m6i", "m5a", "m5"]
     image: ubuntu22-full-x64
     volume: 150gb
+    spot: co
   airflow-arm-small:
-    cpu: 4
-    ram: 16
+    cpu: [4, 8]
+    ram: [16, 32]
     family: ["m8g", "m7g", "m6g"]
     image: ubuntu22-full-arm64
     volume: 150gb
+    spot: co
   airflow-arm-medium:
-    cpu: 8
-    ram: 32
+    cpu: [8, 16]
+    ram: [32, 64]
     family: ["m8g", "m7g", "m6g"]
     image: ubuntu22-full-arm64
     volume: 150gb
+    spot: co
   airflow-arm-xl:
-    cpu: 32
-    ram: 128
+    cpu: [32, 64]
+    ram: [128, 256]
     family: ["m8g", "m7g", "m6g"]
     image: ubuntu22-full-arm64
     volume: 150gb
+    spot: co
+  airflow-amd-in-memory:
+    cpu: [8, 16]
+    ram: [32, 128]
+    family: ["m8a", "m8i", "m7a", "m7i", "m6a", "m6i", "m5a", "m5",
+             "r8i", "r7a", "r7i", "r6a", "r6i"]
+    image: ubuntu22-full-x64
+    volume: 150gb
+    spot: co
+    extras: ["tmpfs"]
+  airflow-arm-in-memory:
+    cpu: [8, 16]
+    ram: [32, 128]
+    family: ["m8g", "m7g", "m6g", "r8g", "r7g", "r6g"]
+    image: ubuntu22-full-arm64
+    volume: 150gb
+    spot: co
+    extras: ["tmpfs"]
