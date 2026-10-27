@@ -27,7 +27,7 @@ variable "stack_name" {
 variable "runs_on_version" {
   description = "RunsOn release to deploy; selects the version-pinned CloudFormation template."
   type        = string
-  default     = "v3.3.2"
+  default     = "v3.5.1"
 }
 
 variable "github_organization" {

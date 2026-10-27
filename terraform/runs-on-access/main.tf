@@ -22,7 +22,7 @@ locals {
 
   # RunsOn releases the apply role may deploy; older published templates stay reachable otherwise.
   # Upgrading RunsOn means adding the new version here and applying this module first.
-  runs_on_versions = ["v3.3.2"]
+  runs_on_versions = ["v3.3.2", "v3.5.1"]
 
   # The repository is pinned by its immutable IDs (repository_owner_id and repository_id claims),
   # so a renamed or re-created repository cannot match. Fork pull requests get no OIDC token at all,

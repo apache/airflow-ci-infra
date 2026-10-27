@@ -31,19 +31,19 @@ runners:
   airflow-amd-small:
     cpu: 4
     ram: 16
-    family: ["m7a", "m7i", "m6a", "m6i"]
+    family: ["m8a", "m8i", "m7a", "m7i", "m6a", "m6i", "m5a", "m5"]
     image: ubuntu22-full-x64
     volume: 150gb
   airflow-amd-medium:
     cpu: 8
     ram: 32
-    family: ["m7a", "m7i", "m6a", "m6i"]
+    family: ["m8a", "m8i", "m7a", "m7i", "m6a", "m6i", "m5a", "m5"]
     image: ubuntu22-full-x64
     volume: 150gb
   airflow-amd-xl:
     cpu: 32
     ram: 128
-    family: ["m7a", "m7i", "m6a", "m6i"]
+    family: ["m8a", "m8i", "m7a", "m7i", "m6a", "m6i", "m5a", "m5"]
     image: ubuntu22-full-x64
     volume: 150gb
   airflow-arm-small:
