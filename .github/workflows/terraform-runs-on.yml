@@ -55,7 +55,7 @@ jobs:
     if: >-
       github.event_name == 'push' ||
       github.event.pull_request.head.repo.full_name == github.repository
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-slim
     permissions:
       contents: read
       id-token: write
@@ -87,6 +87,8 @@ jobs:
   apply:
     needs: plan
     if: github.event_name == 'push'
+    # Not ubuntu-slim: its 15-minute job limit is shorter than a stack update may take (the stack's
+    # timeout_in_minutes is 30), and a killed apply leaves the state lock held.
     runs-on: ubuntu-24.04
     # Required reviewers and the main-only branch policy come from .asf.yaml.
     environment: runs-on-prod
