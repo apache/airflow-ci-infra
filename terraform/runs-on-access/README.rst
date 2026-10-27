@@ -36,9 +36,11 @@ Roles
     Assumed only by jobs in the ``runs-on-prod`` environment, which ``.asf.yaml`` limits to
     ``main`` and to deployments approved by a required reviewer other than the person who
     triggered them. It can call ``cloudformation:UpdateStack`` on the ``runs-on`` stack only with
-    a template from RunsOn's published bucket, only for the versions listed in
-    ``runs_on_versions`` (exact template URLs), so a RunsOn upgrade means adding the version there
-    and applying this module before bumping ``runs_on_version`` in ``terraform/runs-on``. It can
+    one of the release templates RunsOn publishes
+    (``https://runs-on.s3.eu-west-1.amazonaws.com/cloudformation/template-vX.Y.Z.yaml``, matched
+    with ``?`` globs so pre-release and other objects in the bucket do not qualify), so a RunsOn
+    upgrade or rollback needs only the reviewed ``runs_on_version`` change in
+    ``terraform/runs-on``. It can
     also pass the service role below and write the state and its lock file. It holds no
     infrastructure permissions.
 ``runs-on-cloudformation``

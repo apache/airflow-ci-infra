@@ -20,9 +20,14 @@ locals {
   stack_arn  = "arn:aws:cloudformation:us-east-2:${local.account_id}:stack/runs-on/*"
   state      = "arn:aws:s3:::airflow-ci-tfstate/tf-state/runs-on.tfstate"
 
-  # RunsOn releases the apply role may deploy; older published templates stay reachable otherwise.
-  # Upgrading RunsOn means adding the new version here and applying this module first.
-  runs_on_versions = ["v3.3.2", "v3.5.1"]
+  # Any release template RunsOn publishes (vX.Y.Z, one-digit major, one- or two-digit minor and
+  # patch), so an upgrade (or a rollback) is a reviewed change of runs_on_version in
+  # terraform/runs-on alone. "?" matches exactly one character, unlike "*", so pre-release or other
+  # objects in the bucket (template-v3.6.0-rc1.yaml, sub-paths) and other buckets stay out of reach.
+  runs_on_template_urls = [
+    for p in setproduct(["?", "??"], ["?", "??"]) :
+    "https://runs-on.s3.eu-west-1.amazonaws.com/cloudformation/template-v?.${p[0]}.${p[1]}.yaml"
+  ]
 
   # The repository is pinned by its immutable IDs (repository_owner_id and repository_id claims),
   # so a renamed or re-created repository cannot match. Fork pull requests get no OIDC token at all,
@@ -163,12 +168,9 @@ data "aws_iam_policy_document" "apply" {
     actions   = ["cloudformation:UpdateStack"]
     resources = [local.stack_arn]
     condition {
-      test     = "StringEquals"
+      test     = "StringLike"
       variable = "cloudformation:TemplateUrl"
-      values = [
-        for v in local.runs_on_versions :
-        "https://runs-on.s3.eu-west-1.amazonaws.com/cloudformation/template-${v}.yaml"
-      ]
+      values   = local.runs_on_template_urls
     }
   }
   # The provider sends the default tags on every UpdateStack.
