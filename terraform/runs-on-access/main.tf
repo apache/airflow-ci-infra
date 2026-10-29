@@ -35,9 +35,9 @@ locals {
   # (.asf.yaml).
   github_owner_id      = "47359"
   github_repository_id = "321691041"
-  # Both subject forms are accepted: the default one the repository emits today and the immutable
-  # one it emits once INFRA-28572 opts it in. Dropping the default form afterwards is optional
-  # cleanup (README, "Switching to the immutable subject").
+  # Both subject forms are accepted: the default one and the immutable one, which the repository
+  # emits once github.oidc_subject in .asf.yaml opts it in. Dropping the default form afterwards is
+  # optional cleanup (README, "Switching to the immutable subject").
   github_subject_prefixes = [
     "repo:apache/airflow-ci-infra",
     "repo:apache@${local.github_owner_id}/airflow-ci-infra@${local.github_repository_id}",
