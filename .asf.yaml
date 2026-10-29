@@ -57,6 +57,10 @@ github:
   pull_requests:
     # Auto-merge waits for the checks the "Require prek on main" ruleset requires.
     allow_auto_merge: true
+  # The AWS roles in terraform/runs-on-access trust this form. Deleting the key keeps the immutable
+  # form; going back needs an explicit false.
+  oidc_subject:
+    use_immutable_subject: true
   environments:
     # Gates terraform apply of terraform/runs-on: the AWS apply role trusts only this environment.
     runs-on-prod:

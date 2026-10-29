@@ -63,25 +63,17 @@ Roles
 
 All trust policies pin the repository by its immutable GitHub IDs (``repository_owner_id``
 ``47359`` and ``repository_id`` ``321691041``), so a renamed or re-created repository cannot match
-them. They accept two forms of the ``sub`` claim: the default ``repo:apache/airflow-ci-infra:...``,
-which the repository emits today, and the immutable
-``repo:apache@47359/airflow-ci-infra@321691041:...``, which it emits once
-`INFRA-28572 <https://issues.apache.org/jira/browse/INFRA-28572>`_ opts it in; see
-`Switching to the immutable subject`_. The GitHub OIDC provider already exists in the account (it
+them. They accept two forms of the ``sub`` claim: the default ``repo:apache/airflow-ci-infra:...``
+and the immutable ``repo:apache@47359/airflow-ci-infra@321691041:...``, which the repository emits
+once ``github.oidc_subject`` in ``.asf.yaml`` opts it in; see `Switching to the immutable subject`_. The GitHub OIDC provider already exists in the account (it
 is shared with ``apache/airflow``) and is only read here.
 
 Bootstrap order
 ---------------
 
-1. (Optional, pending INFRA-28572_.) A repository admin opts ``apache/airflow-ci-infra`` into
-   immutable OIDC subjects. The roles accept both subject forms and pin the repository by ID
-   either way, see `Switching to the immutable subject`_:
-
-   .. code-block:: bash
-
-       gh api -X PUT repos/apache/airflow-ci-infra/actions/oidc/customization/sub \
-           -F use_default=true -F use_immutable_subject=true
-
+1. ``github.oidc_subject`` in ``.asf.yaml`` opts ``apache/airflow-ci-infra`` into immutable OIDC
+   subjects. The roles accept both subject forms and pin the repository by ID either way, see
+   `Switching to the immutable subject`_.
 2. Merge, so that ``.asf.yaml`` creates the ``runs-on-prod`` environment. This happens before the
    roles exist, so the first workflow run on ``main`` cannot assume them, and a job never sees
    the environment without its protection rules.
@@ -114,7 +106,7 @@ Switching to the immutable subject
 ----------------------------------
 
 The ID conditions already protect against a renamed or re-created repository, so this is cleanup,
-not a security fix. Once INFRA has enabled ``use_immutable_subject``
+not a security fix. Once ``.asf.yaml`` has enabled ``use_immutable_subject``
 (``gh api repos/apache/airflow-ci-infra/actions/oidc/customization/sub`` shows
 ``sub_claim_prefix`` as ``repo:apache@47359/airflow-ci-infra@321691041``), the tokens change form at
 once and the roles keep working because they trust both. After one green pull-request plan and one
