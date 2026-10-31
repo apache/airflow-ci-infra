@@ -103,3 +103,11 @@ repos:
     hooks:
       - id: zizmor
         name: Run zizmor on GitHub Actions workflows
+  - repo: local
+    hooks:
+      - id: terraform-lock-platforms
+        name: Check Terraform lock files cover Linux and macOS
+        entry: scripts/terraform_lock_platforms.py
+        language: python
+        files: ^terraform/[^/]+/(.+\.tf|\.terraform\.lock\.hcl)$
+        require_serial: true
