@@ -54,8 +54,8 @@ Files
     license-key lookup and the permissions boundary of the stack's roles.
 ``variables.tf``
     All variables have defaults: ``stack_name`` (``runs-on-flex``), ``runs_on_environment``
-    (``flex``), ``github_organization``, ``alert_email``, ``enable_admin_routes`` (``false``) and
-    ``vpc_cidr``.
+    (``flex``), ``github_organization``, ``alert_email``, ``enable_admin_routes``
+    (``true`` until the GitHub App is registered) and ``vpc_cidr``.
 ``state.tf``
     S3 backend ``airflow-ci-tfstate`` / ``tf-state/runs-on-flex.tfstate``.
 

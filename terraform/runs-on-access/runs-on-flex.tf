@@ -224,6 +224,20 @@ data "aws_iam_policy_document" "flex_boundary" {
     actions       = ["sts:AssumeRole"]
     not_resources = ["arn:aws:iam::${local.account_id}:role/${local.flex_stack}-*"]
   }
+  # The apply role's own OnlyTheRunnersRegion deny does not reach the roles it passes to Lambda,
+  # ECS or EC2, so the boundary repeats it. Exempted: IAM, STS and Budgets as on the apply role,
+  # and the global endpoints the module's roles call (Cost Explorer, Pricing, public ECR).
+  statement {
+    sid         = "OnlyTheRunnersRegion"
+    effect      = "Deny"
+    not_actions = ["iam:*", "sts:*", "budgets:*", "ce:*", "pricing:*", "ecr-public:*"]
+    resources   = ["*"]
+    condition {
+      test     = "StringNotEquals"
+      variable = "aws:RequestedRegion"
+      values   = ["us-east-2"]
+    }
+  }
   statement {
     sid       = "NoTerraformState"
     effect    = "Deny"
