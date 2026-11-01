@@ -55,7 +55,7 @@ Files
 ``variables.tf``
     All variables have defaults: ``stack_name`` (``runs-on-flex``), ``runs_on_environment``
     (``flex``), ``github_organization``, ``alert_email``, ``enable_admin_routes``
-    (``true`` until the GitHub App is registered) and ``vpc_cidr``.
+    (``false``; ``true`` only while registering the GitHub App) and ``vpc_cidr``.
 ``state.tf``
     S3 backend ``airflow-ci-tfstate`` / ``tf-state/runs-on-flex.tfstate``.
 

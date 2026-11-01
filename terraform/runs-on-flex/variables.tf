@@ -55,7 +55,7 @@ variable "enable_admin_routes" {
     (or re-registering) the GitHub App, then back to false.
   EOT
   type        = bool
-  default     = true
+  default     = false
 }
 
 variable "vpc_cidr" {
