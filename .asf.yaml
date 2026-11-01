@@ -69,6 +69,8 @@ github:
           type: User
         - id: shahar1
           type: User
+        - id: hussein-awala
+          type: User
       wait_timer: 0
       prevent_self_review: true
       deployment_branch_policy:
