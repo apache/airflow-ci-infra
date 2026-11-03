@@ -161,8 +161,9 @@ resource "aws_iam_role_policy" "read" {
   policy = data.aws_iam_policy_document.read.json
 }
 
-# The apply role can only resubmit the stack from RunsOn's published templates. CloudFormation
-# then acts as the stack's service role below, so this role holds no infrastructure permissions.
+# The apply role can only resubmit the stack from RunsOn's published templates, or delete it.
+# CloudFormation then acts as the stack's service role below, so this role holds no
+# infrastructure permissions.
 data "aws_iam_policy_document" "apply" {
   statement {
     actions   = ["cloudformation:UpdateStack"]
@@ -172,6 +173,12 @@ data "aws_iam_policy_document" "apply" {
       variable = "cloudformation:TemplateUrl"
       values   = local.runs_on_template_urls
     }
+  }
+  # Own statement: the TemplateUrl condition above would deny a DeleteStack, which carries no
+  # template.
+  statement {
+    actions   = ["cloudformation:DeleteStack"]
+    resources = [local.stack_arn]
   }
   # The provider sends the default tags on every UpdateStack.
   statement {

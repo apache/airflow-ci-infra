@@ -26,41 +26,7 @@ data "aws_ssm_parameter" "license_key" {
 
 data "aws_caller_identity" "current" {}
 
-resource "aws_cloudformation_stack" "runs_on" {
-  name         = var.stack_name
-  template_url = "https://runs-on.s3.eu-west-1.amazonaws.com/cloudformation/template-${var.runs_on_version}.yaml"
-  capabilities = ["CAPABILITY_IAM", "CAPABILITY_NAMED_IAM", "CAPABILITY_AUTO_EXPAND"]
-  # Service role from terraform/runs-on-access: CloudFormation acts as it, so the GitHub Actions
-  # apply role needs no infrastructure permissions. Once set, a stack keeps its role.
-  iam_role_arn = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/runs-on-cloudformation"
-
-  # Everything not listed keeps the template default; the values match the stack validated on
-  # 2026-09-25 (see the AIP-118 appendix) apart from the organization and the CIDR.
-  parameters = {
-    GithubOrganization      = var.github_organization
-    LicenseKey              = data.aws_ssm_parameter.license_key.arn
-    EmailAddress            = var.alert_email
-    Environment             = "production"
-    VpcCidrBlock            = var.vpc_cidr
-    Private                 = "false" # runners get public IPs: no NAT cost, Docker Hub pulls per runner IP
-    SSHAllowed              = "false"
-    SSMAllowed              = "true"
-    EnableAdminRoutes       = tostring(var.enable_admin_routes)
-    EnableEphemeralRegistry = "false"
-    RunnerMaxRuntime        = "720"
-    S3CacheExpirationInDays = "10"
-    AppSize                 = "small"
-    # With hundreds of runners two interruptions in 15 minutes are routine, so the default 2/15/30
-    # kept Spot off: on 2026-10-26 the stack ran 920 on-demand vCPUs against 48 on Spot.
-    SpotCircuitBreaker      = "30/15/10"
-    CostReportsEnabled      = "daily"
-    AppBudgetDailyUsd       = "10" # alert only, not a spending cap
-  }
-
-  timeout_in_minutes = 30
-
-  lifecycle {
-    # The stack owns the runners for apache/airflow; a destroy is a deliberate, separate change.
-    prevent_destroy = true
-  }
-}
+# The stack was removed from this configuration on purpose: every job of apache/airflow runs on
+# terraform/runs-on-flex since 2026-11-01, and applying this change is what deletes the stack
+# (the Terraform (RunsOn) workflow, after the runs-on-prod approval). The template retains the
+# cache and access-log buckets (DeletionPolicy RetainExceptOnCreate); delete them by hand.
