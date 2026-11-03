@@ -40,9 +40,8 @@ Roles
     (``https://runs-on.s3.eu-west-1.amazonaws.com/cloudformation/template-vX.Y.Z.yaml``, matched
     with ``?`` globs so pre-release and other objects in the bucket do not qualify), so a RunsOn
     upgrade or rollback needs only the reviewed ``runs_on_version`` change in
-    ``terraform/runs-on``. It can
-    also pass the service role below and write the state and its lock file. It holds no
-    infrastructure permissions.
+    ``terraform/runs-on``. It can also delete the stack, pass the service role below and write
+    the state and its lock file. It holds no infrastructure permissions.
 ``runs-on-cloudformation``
     The stack's CloudFormation service role, which performs every create, update and delete.
     RunsOn documents only "admin rights" for deploying its stack, and its template touches IAM,
