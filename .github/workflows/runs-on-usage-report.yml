@@ -92,8 +92,8 @@ jobs:
               gh issue create --title "${ISSUE_TITLE}" --body "${summary}
 
           The RunsOn stack launches Spot first and falls back to on-demand when Spot capacity is
-          short or while its Spot circuit breaker is open (\`SpotCircuitBreaker\` in
-          \`terraform/runs-on/main.tf\`). On-demand instances cost more and count against the
+          short or while its Spot circuit breaker is open (\`spot_circuit_breaker\` in
+          \`terraform/runs-on-flex/main.tf\`). On-demand instances cost more and count against the
           smaller on-demand vCPU quota, so jobs queue once it is full. The RunsOn CloudWatch
           dashboard shows the circuit breaker state. This issue gets a comment every week while the
           share stays above ${THRESHOLD_PERCENT}%, and is closed once it is back under."

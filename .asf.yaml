@@ -62,7 +62,7 @@ github:
   oidc_subject:
     use_immutable_subject: true
   environments:
-    # Gates terraform apply of terraform/runs-on: the AWS apply role trusts only this environment.
+    # Gates terraform apply of terraform/runs-on-flex: the AWS apply role trusts only this environment.
     runs-on-prod:
       required_reviewers:
         - id: potiuk

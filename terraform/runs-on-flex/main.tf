@@ -42,7 +42,7 @@ module "runs_on" {
   # Created in terraform/runs-on-access; the apply role cannot create a stack role without it.
   permission_boundary_arn = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:policy/${var.stack_name}-boundary"
 
-  # The values of the CloudFormation stack (terraform/runs-on/main.tf); everything else keeps the
+  # The values carried over from the retired CloudFormation stack; everything else keeps the
   # module default.
   ssh_allowed           = false
   ssm_allowed           = true
@@ -52,7 +52,7 @@ module "runs_on" {
   cache_expiration_days = 10
   app_size              = "small"
   # With hundreds of runners two interruptions in 15 minutes are routine, so the default 2/15/30
-  # keeps Spot off (terraform/runs-on/main.tf).
+  # keeps Spot off.
   spot_circuit_breaker = "30/15/10"
   enable_cost_reports  = "daily"
   app_budget_daily_usd = 10 # alert only, not a spending cap

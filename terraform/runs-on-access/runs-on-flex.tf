@@ -15,13 +15,13 @@
 # specific language governing permissions and limitations
 # under the License.
 
-# Roles of the Terraform (RunsOn Flex) workflow, which applies terraform/runs-on-flex: RunsOn's
-# Terraform module instead of its CloudFormation template. No CloudFormation service role sits in
-# between, so the apply role itself creates the infrastructure. It gets what the CloudFormation
-# service role in main.tf has (AdministratorAccess with denies) and three limits more: it acts
-# only in us-east-2 (IAM and Budgets are global), it reaches no S3 bucket but the stack's cache
-# buckets and its own state, and every role it creates carries the runs-on-flex-boundary
-# permissions boundary, so no role of the stack can be given more than the boundary allows.
+# Roles of the Terraform (RunsOn Flex) workflow, which applies terraform/runs-on-flex from RunsOn's
+# Terraform module. No CloudFormation service role sits in between, so the apply role itself
+# creates the infrastructure: AdministratorAccess with denies on top. It writes IAM only under the
+# stack's own prefix, it acts only in us-east-2 (IAM and Budgets are global), it reaches no S3
+# bucket but the stack's cache buckets and its own state, and every role it creates carries the
+# runs-on-flex-boundary permissions boundary, so no role of the stack can be given more than the
+# boundary allows.
 locals {
   flex_stack = "runs-on-flex"
   flex_state = "arn:aws:s3:::airflow-ci-tfstate/tf-state/runs-on-flex.tfstate"
@@ -98,7 +98,7 @@ resource "aws_iam_role_policy" "flex_plan_guardrails" {
 }
 
 # RunsOn documents only "admin rights" for deploying the stack, and the module's resource set
-# changes between releases, so AdministratorAccess as for the CloudFormation service role.
+# changes between releases, so AdministratorAccess.
 resource "aws_iam_role_policy_attachment" "flex_apply" {
   role       = aws_iam_role.flex_terraform["apply"].name
   policy_arn = "arn:aws:iam::aws:policy/AdministratorAccess"

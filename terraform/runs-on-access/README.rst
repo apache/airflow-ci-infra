@@ -18,44 +18,42 @@
 AWS access for the RunsOn Terraform workflow
 ============================================
 
-The IAM roles that let ``.github/workflows/terraform-runs-on.yml`` plan and apply
-`terraform/runs-on <../runs-on/README.rst>`_ without any stored AWS credential. This module is
-applied **by hand by an account admin** (own state key ``tf-state/runs-on-access.tfstate``) and
-never by the workflow, so the workflow cannot widen its own permissions.
+The IAM roles that let ``.github/workflows/terraform-runs-on-flex.yml`` plan and apply
+`terraform/runs-on-flex <../runs-on-flex/README.rst>`_ without any stored AWS credential, and the
+role of the weekly usage report. This module is applied **by hand by an account admin** (own state
+key ``tf-state/runs-on-access.tfstate``) and never by the workflow, so the workflow cannot widen
+its own permissions.
 
 Roles
 -----
 
-``runs-on-terraform-plan``
+``runs-on-terraform-flex-plan``
     Assumed through GitHub OIDC by pull requests of ``apache/airflow-ci-infra`` and by pushes to
-    ``main``. Reads the stack, the state and the license-key parameter **without** decryption
-    (``kms:Decrypt`` is denied explicitly: the ``aws/ssm`` key policy would otherwise let
-    ``ssm:GetParameter`` return the plain key). Plans run with ``-lock=false``; the role writes
-    nothing. Fork pull requests get no OIDC token and cannot use it.
-``runs-on-terraform-apply``
+    ``main``. ``ReadOnlyAccess``, which refreshing the module's resources needs, with denies that
+    keep secrets out of a pull request's reach: no S3 object but this module's state, no
+    ``kms:Decrypt`` through SSM (the ``aws/ssm`` key policy would otherwise let
+    ``ssm:GetParameter`` return the plain license key) and no Secrets Manager values. Plans run
+    with ``-lock=false``; the role writes nothing. Fork pull requests get no OIDC token and cannot
+    use it.
+``runs-on-terraform-flex-apply``
     Assumed only by jobs in the ``runs-on-prod`` environment, which ``.asf.yaml`` limits to
     ``main`` and to deployments approved by a required reviewer other than the person who
-    triggered them. It can call ``cloudformation:UpdateStack`` on the ``runs-on`` stack only with
-    one of the release templates RunsOn publishes
-    (``https://runs-on.s3.eu-west-1.amazonaws.com/cloudformation/template-vX.Y.Z.yaml``, matched
-    with ``?`` globs so pre-release and other objects in the bucket do not qualify), so a RunsOn
-    upgrade or rollback needs only the reviewed ``runs_on_version`` change in
-    ``terraform/runs-on``. It can
-    also pass the service role below and write the state and its lock file. It holds no
-    infrastructure permissions.
-``runs-on-cloudformation``
-    The stack's CloudFormation service role, which performs every create, update and delete.
-    RunsOn documents only "admin rights" for deploying its stack, and its template touches IAM,
-    VPC, ECS, Lambda, API Gateway, SQS, DynamoDB, S3, SNS and Budgets, with a set that changes
-    between releases, so the role has ``AdministratorAccess`` with explicit denies on top: IAM
-    writes only to the roles and instance profile the template names
-    (``runs-on-<logical id>-*``) and to service-linked roles, no ``sts:AssumeRole*``, and no
-    access to the ``airflow-ci-tfstate`` bucket. The role may attach only the two managed
-    policies the template uses, so the ``AppCustomPolicy`` / ``RunnerCustomPolicy`` stack
-    parameters cannot give the stack's roles (or the CI runners) more permissions; a custom policy
-    needs that list extended here first. A template release that adds an IAM resource
-    with a new logical-ID prefix fails its update with ``AccessDenied`` until the list in
-    ``main.tf`` is extended.
+    triggered them. It creates the stack's resources itself. RunsOn documents only "admin rights"
+    for deploying its stack, and the module's resource set changes between releases, so the role
+    has ``AdministratorAccess`` with explicit denies on top (``runs-on-flex.tf``): IAM writes only
+    to ``runs-on-flex-*`` roles and instance profiles and to service-linked roles, every role it
+    creates must carry the ``runs-on-flex-boundary`` permissions boundary, only the two managed
+    policies the module attaches, no ``sts:AssumeRole*``, no S3 but the stack's cache bucket
+    (``runs-on-flex-cache-*``) and this module's state and lock file, and us-east-2 only (IAM,
+    STS and Budgets are global). A module release that names an IAM role outside that prefix or
+    attaches another managed policy fails its apply with ``AccessDenied`` until the lists in
+    ``runs-on-flex.tf`` are extended.
+``runs-on-flex-boundary``
+    The permissions boundary of every role the stack creates, so the ceiling of what a Lambda
+    function, an ECS task or a runner instance of the stack can do whatever its own policies say:
+    no IAM writes, ``iam:PassRole`` and ``sts:AssumeRole`` only on the stack's own roles,
+    us-east-2 only (plus the global endpoints the module's roles call) and no access to the
+    ``airflow-ci-tfstate`` bucket.
 ``runs-on-usage-report``
     Assumed through GitHub OIDC by workflows running on ``main`` of ``apache/airflow-ci-infra``,
     for the weekly ``.github/workflows/runs-on-usage-report.yml``. It can only call
@@ -94,13 +92,11 @@ Bootstrap order
 
        cd terraform/runs-on-access
        terraform init
-       terraform plan -out=runs-on-access.tfplan   # 4 roles and their policies, nothing else
+       terraform plan -out=runs-on-access.tfplan   # 3 roles, their policies and the boundary
        terraform apply runs-on-access.tfplan
 
-5. The same admin applies ``terraform/runs-on`` once by hand, which sets ``iam_role_arn`` on the
-   stack (the workflow would only do it on the next push that changes ``terraform/runs-on``'s
-   ``.tf`` files).
-   From then on the workflow plans and applies.
+   From then on the ``Terraform (RunsOn Flex)`` workflow plans and applies
+   ``terraform/runs-on-flex``.
 
 Switching to the immutable subject
 ----------------------------------

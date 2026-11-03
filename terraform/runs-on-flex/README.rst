@@ -18,17 +18,17 @@
 RunsOn Flex — the runners from RunsOn's Terraform module
 ========================================================
 
-This module deploys the same RunsOn runners as `terraform/runs-on <../runs-on/README.rst>`_, from
-RunsOn's `Terraform module <https://github.com/runs-on/terraform-aws-runs-on>`_ (Flex, v3.5.1)
-instead of its CloudFormation template, into a VPC this module creates with a public subnet in
-each of the three us-east-2 zones. Both stacks run side by side until the jobs of
-``apache/airflow`` have moved here; the CloudFormation stack is then removed in a separate change.
+This module deploys Airflow's RunsOn runners from RunsOn's
+`Terraform module <https://github.com/runs-on/terraform-aws-runs-on>`_ (Flex, v3.5.1) into a VPC
+this module creates with a public subnet in each of the three us-east-2 zones. It replaced the
+``runs-on`` CloudFormation stack (RunsOn's template, ``terraform/runs-on`` until its retirement),
+which served the jobs of ``apache/airflow`` until 2026-11-01.
 
 Why this module
 ---------------
 
-The CloudFormation template places runners in the first two zones of the region, use2-az1 and
-use2-az2 for this account, and has no parameter to change that. On 2026-10-30 those two zones
+The CloudFormation template placed runners in the first two zones of the region, use2-az1 and
+use2-az2 for this account, and had no parameter to change that. On 2026-10-30 those two zones
 had the worst Spot capacity in the region for the runners' instance families:
 
 =================================  ==========  ==========  ==========
@@ -48,10 +48,10 @@ Files
 
 ``network.tf``
     VPC (``vpc_cidr``, default ``10.3.0.0/16``), internet gateway, one public subnet per zone ID
-    and an S3 gateway endpoint. No NAT: runners get public IPs, as on the CloudFormation stack.
+    and an S3 gateway endpoint. No NAT: runners get public IPs.
 ``main.tf``
-    The ``runs-on/runs-on/aws//modules/flex`` module with the CloudFormation stack's settings, the
-    license-key lookup and the permissions boundary of the stack's roles.
+    The ``runs-on/runs-on/aws//modules/flex`` module with the settings carried over from the
+    CloudFormation stack, the license-key lookup and the permissions boundary of the stack's roles.
 ``variables.tf``
     All variables have defaults: ``stack_name`` (``runs-on-flex``), ``runs_on_environment``
     (``flex``), ``github_organization``, ``alert_email``, ``enable_admin_routes``
@@ -59,13 +59,14 @@ Files
 ``state.tf``
     S3 backend ``airflow-ci-tfstate`` / ``tf-state/runs-on-flex.tfstate``.
 
-How it differs from the CloudFormation stack
---------------------------------------------
+How it differs from the retired CloudFormation stack
+----------------------------------------------------
 
-- **Environment.** The stack takes only jobs whose label carries ``env=flex``; the CloudFormation
-  stack keeps the default ``production`` and ignores them. That is what lets both run at once.
-- **Who creates the resources.** The CloudFormation stack is applied by a role that can only
-  resubmit RunsOn's published template; CloudFormation's service role does the work. Here the
+- **Environment.** The stack takes only jobs whose label carries ``env=flex``. A job without
+  ``env`` targets RunsOn's default ``production`` environment, which no stack serves any more, so
+  it stays queued.
+- **Who creates the resources.** The CloudFormation stack was applied by a role that could only
+  resubmit RunsOn's published template; CloudFormation's service role did the work. Here the
   ``runs-on-terraform-flex-apply`` role creates everything itself, with AdministratorAccess and
   the denies in `terraform/runs-on-access/runs-on-flex.tf <../runs-on-access/runs-on-flex.tf>`_:
   IAM writes only on ``runs-on-flex-*`` roles and only with the ``runs-on-flex-boundary``
@@ -83,9 +84,8 @@ Setup
 1. **Access (account admin, once).** Apply `terraform/runs-on-access <../runs-on-access/README.rst>`_:
    it adds the ``runs-on-terraform-flex-plan`` and ``-apply`` roles and the
    ``runs-on-flex-boundary`` policy.
-2. **License key (manual, once).** The same RunsOn license as the CloudFormation stack, under
-   this stack's name. The module receives only the parameter's ARN, so the key never reaches
-   Terraform state:
+2. **License key (manual, once).** The RunsOn license, under this stack's name. The module
+   receives only the parameter's ARN, so the key never reaches Terraform state:
 
    .. code-block:: bash
 
@@ -99,17 +99,12 @@ Setup
    ``Terraform (RunsOn Flex)`` workflow plans on ``main`` and applies once a reviewer approves
    ``runs-on-prod``. Set ``enable_admin_routes = true`` in that first change.
 4. **GitHub App (with ASF Infra).** Open the ``entry_point`` output → **Register app**. This
-   creates a second private GitHub App for this stack; ASF Infra installs it on
-   ``apache/airflow`` (and ``.github-private``, for the presets). Then set
-   ``enable_admin_routes`` back to ``false`` in a follow-up change.
-5. **Move the jobs.** In ``apache/airflow``, add ``/env=flex`` to the RunsOn label templates in
-   ``dev/breeze/src/airflow_breeze/global_constants.py``. All jobs of a run must move together:
-   the stash actions keep image tars in the cache bucket of the stack that ran the job, so a
-   job on the other stack would not find them. Rolling back is removing ``/env=flex``.
-6. **Retire the CloudFormation stack** once the runs have been green on this stack for a while:
-   a separate change in ``terraform/runs-on`` (remove ``prevent_destroy``, destroy), the old
-   GitHub App uninstalled by ASF Infra, and the ``runs-on-terraform-plan``, ``-apply`` and
-   ``runs-on-cloudformation`` roles removed from ``runs-on-access``.
+   creates a private GitHub App for this stack; ASF Infra installs it on ``apache/airflow``. Then
+   set ``enable_admin_routes`` back to ``false`` in a follow-up change.
+5. **Point the jobs here.** In ``apache/airflow``, the RunsOn label templates in
+   ``dev/breeze/src/airflow_breeze/global_constants.py`` carry ``/env=flex``. All jobs of a run
+   must target the same stack: the stash actions keep image tars in the cache bucket of the stack
+   that ran the job, so a job on another stack would not find them.
 
 Locally, an account admin runs the same steps as the workflow::
 
