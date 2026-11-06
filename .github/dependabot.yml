@@ -52,11 +52,9 @@ updates:
         patterns: ["*"]
 
   # Updates the providers in .terraform.lock.hcl and the version constraints in version.tf. A
-  # terraform/runs-on change is planned on its pull request and applied after merge, behind the
-  # runs-on-prod approval.
+  # terraform/runs-on-access change is applied by hand by an account admin after merge.
   - package-ecosystem: terraform
     directories:
-      - /terraform/runs-on
       - /terraform/runs-on-access
     schedule:
       interval: weekly

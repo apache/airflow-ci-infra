@@ -16,8 +16,8 @@
 # under the License.
 ---
 # Plans terraform/runs-on-flex on pull requests and on main; applies the plan made on main once a
-# required reviewer approves the runs-on-prod environment. Same flow as terraform-runs-on.yml; the
-# AWS roles live in terraform/runs-on-access and are applied by hand.
+# required reviewer approves the runs-on-prod environment. The AWS roles live in
+# terraform/runs-on-access and are applied by hand.
 name: Terraform (RunsOn Flex)
 
 on:  # yamllint disable-line rule:truthy

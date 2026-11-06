@@ -23,7 +23,7 @@ RunsOn deployment
 
 `AIP-118 <https://cwiki.apache.org/confluence/spaces/AIRFLOW/pages/451974652>`_ selected
 `RunsOn <https://runs-on.com/>`_ for Airflow's self-hosted GitHub Actions runners. The Terraform
-module that creates its CloudFormation stack, and the runner presets, live in
-`terraform/runs-on <terraform/runs-on/README.rst>`_; the ``Terraform (RunsOn)`` workflow plans
-and applies it, with the AWS roles from
+module that deploys its stack lives in
+`terraform/runs-on-flex <terraform/runs-on-flex/README.rst>`_; the ``Terraform (RunsOn Flex)``
+workflow plans and applies it, with the AWS roles from
 `terraform/runs-on-access <terraform/runs-on-access/README.rst>`_.
