@@ -31,9 +31,8 @@ repos:
       - id: forbid-tabs
       - id: insert-license
         name: Add license
-        # LICENSE is the license itself, lock files are generated, and cloud-init.yml must start with
-        # #cloud-config.
-        exclude: ^\.github/.*$|^license-templates/|\.json$|\.md$|\.rst$|^LICENSE$|\.terraform\.lock\.hcl$|^cloud-init\.yml$
+        # LICENSE is the license itself and lock files are generated.
+        exclude: ^\.github/.*$|^license-templates/|\.json$|\.md$|\.rst$|^LICENSE$|\.terraform\.lock\.hcl$
         args:
           - --comment-style
           - "|#|"
