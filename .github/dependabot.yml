@@ -40,9 +40,7 @@ updates:
         patterns: ["*"]
 
   - package-ecosystem: pip
-    directories:
-      - /
-      - /lambdas/scale_out_runner
+    directory: /
     schedule:
       interval: weekly
     cooldown:

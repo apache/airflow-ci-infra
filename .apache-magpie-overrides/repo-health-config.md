@@ -117,9 +117,6 @@ repo_health:
     # Source paths to audit for license headers (relative to upstream repo root).
     source_paths:
       - ".github/"
-      - "arm-docker-ami/"
-      - "github-runner-ami/"
-      - "lambdas/"
       - "scripts/"
       - "terraform/"
       - "tests/"
