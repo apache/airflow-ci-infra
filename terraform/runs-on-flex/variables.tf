@@ -44,9 +44,9 @@ variable "github_organization" {
 variable "alert_email" {
   description = "Recipient of RunsOn cost reports and alerts; AWS sends an SNS confirmation email on creation."
   type        = string
-  # A personal address until we find a way to confirm the SNS subscription for a mailing list:
-  # the confirmation email needs a click, and the moderated private@airflow.apache.org holds it.
-  default = "shahar@apache.org"
+  # The SNS confirmation email needs a click from a list subscriber, so list moderation must not
+  # hold mail from SNS.
+  default = "ci-alerts@airflow.apache.org"
 }
 
 variable "enable_admin_routes" {
